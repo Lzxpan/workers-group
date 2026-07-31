@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="500" viewBox="0 0 1200 500" role="img" aria-labelledby="title desc">
+  <title id="title">打工人集團陪你完成任務</title>
+  <desc id="desc">五張卡片呈現從說明目標到拿到成果的使用者旅程。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#081a33"/><stop offset="1" stop-color="#102b51"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1200" height="500" rx="28" fill="url(#bg)"/>
+  <g font-family="Microsoft JhengHei, Noto Sans TC, sans-serif">
+    <text x="70" y="85" fill="#f6f8fb" font-size="42" font-weight="700">大任務，有一條走得下去的路</text>
+    <text x="70" y="125" fill="#9eb7d4" font-size="22">你專心說方向，團隊陪你把事情往前推。</text>
+  </g>
+  <g font-family="Microsoft JhengHei, Noto Sans TC, sans-serif" text-anchor="middle">
+    <g transform="translate(75 220)"><rect width="180" height="145" rx="18" fill="#122d52" stroke="#4fc3f7" stroke-width="2"/><circle cx="90" cy="40" r="16" fill="#4fc3f7" filter="url(#glow)"/><text x="90" y="88" fill="white" font-size="25" font-weight="700">說明目標</text><text x="90" y="119" fill="#b8d5ef" font-size="16">從你的一句話開始</text></g>
+    <g transform="translate(300 220)"><rect width="180" height="145" rx="18" fill="#172e4d" stroke="#ffb454" stroke-width="2"/><circle cx="90" cy="40" r="16" fill="#ffb454" filter="url(#glow)"/><text x="90" y="88" fill="white" font-size="25" font-weight="700">一起規劃</text><text x="90" y="119" fill="#c9d6e7" font-size="16">把大事慢慢理清</text></g>
+    <g transform="translate(525 220)"><rect width="180" height="145" rx="18" fill="#172e4d" stroke="#7dd3fc" stroke-width="2"/><circle cx="90" cy="40" r="16" fill="#7dd3fc" filter="url(#glow)"/><text x="90" y="88" fill="white" font-size="25" font-weight="700">動手完成</text><text x="90" y="119" fill="#c9d6e7" font-size="16">一步一步往前推</text></g>
+    <g transform="translate(750 220)"><rect width="180" height="145" rx="18" fill="#172e4d" stroke="#a78bfa" stroke-width="2"/><circle cx="90" cy="40" r="16" fill="#a78bfa" filter="url(#glow)"/><text x="90" y="88" fill="white" font-size="25" font-weight="700">隨時掌握</text><text x="90" y="119" fill="#c9d6e7" font-size="16">長任務也不慌張</text></g>
+    <g transform="translate(975 220)"><rect width="155" height="145" rx="18" fill="#16403d" stroke="#5eead4" stroke-width="2"/><circle cx="78" cy="40" r="16" fill="#5eead4" filter="url(#glow)"/><text x="78" y="88" fill="white" font-size="25" font-weight="700">拿到成果</text><text x="78" y="119" fill="#c9f2eb" font-size="16">清楚知道做到哪裡</text></g>
+  </g>
+  <g fill="none" stroke="#7dd3fc" stroke-width="4" stroke-linecap="round"><path d="M265 292h25"/><path d="M490 292h25"/><path d="M715 292h25"/><path d="M940 292h25"/></g>
+  <g fill="#7dd3fc"><path d="M285 282l12 10-12 10z"/><path d="M510 282l12 10-12 10z"/><path d="M735 282l12 10-12 10z"/><path d="M960 282l12 10-12 10z"/></g>
+  <text x="600" y="450" fill="#ffca81" font-family="Microsoft JhengHei, Noto Sans TC, sans-serif" font-size="20" text-anchor="middle">任務再大，也有人陪你一路走完。</text>
+</svg>
