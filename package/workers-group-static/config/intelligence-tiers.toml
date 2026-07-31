@@ -1,0 +1,25 @@
+schema_version = "1.0"
+
+[sol]
+preferred_model = "gpt-5.6-sol"
+preferred_reasoning_effort = "xhigh"
+fallback_model = "gpt-5.6-terra"
+fallback_reasoning_effort = "high"
+
+[luna]
+preferred_model = "gpt-5.6-sol"
+preferred_reasoning_effort = "high"
+fallback_model = "gpt-5.6-terra"
+fallback_reasoning_effort = "high"
+
+[terra]
+preferred_model = "gpt-5.6-terra"
+preferred_reasoning_effort = "high"
+fallback_model = "gpt-5.6-sol"
+fallback_reasoning_effort = "medium"
+
+[verification]
+codex_version = "codex-cli 0.128.0"
+verified_at = "2026-07-30T20:23:08+08:00"
+verification_method = "Current Codex Desktop session models plus codex debug model catalog comparison; see environment-discovery.json."
+catalog_discrepancy = true

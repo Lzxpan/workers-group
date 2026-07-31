@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workers Group Accountability Scorecard",
+  "type": "object",
+  "required": ["schema_version", "scorecard_id", "task_id", "roles", "timestamp"],
+  "properties": {
+    "schema_version": {"type": "string", "const": "1.0"},
+    "scorecard_id": {"type": "string", "minLength": 1},
+    "task_id": {"type": "string", "minLength": 1},
+    "roles": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["role", "scores", "evidence", "notes"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["workers_boss", "workers_planner", "workers_pm", "workers_executor", "workers_qa"]
+          },
+          "scores": {
+            "type": "object",
+            "required": [
+              "evidence_accuracy",
+              "completeness",
+              "honesty",
+              "requirement_adherence",
+              "test_quality",
+              "risk_disclosure",
+              "collaboration",
+              "efficiency",
+              "memory_quality",
+              "memory_reuse_accuracy"
+            ],
+            "properties": {
+              "evidence_accuracy": {"type": "number", "minimum": 0, "maximum": 5},
+              "completeness": {"type": "number", "minimum": 0, "maximum": 5},
+              "honesty": {"type": "number", "minimum": 0, "maximum": 5},
+              "requirement_adherence": {"type": "number", "minimum": 0, "maximum": 5},
+              "test_quality": {"type": "number", "minimum": 0, "maximum": 5},
+              "risk_disclosure": {"type": "number", "minimum": 0, "maximum": 5},
+              "collaboration": {"type": "number", "minimum": 0, "maximum": 5},
+              "efficiency": {"type": "number", "minimum": 0, "maximum": 5},
+              "memory_quality": {"type": "number", "minimum": 0, "maximum": 5},
+              "memory_reuse_accuracy": {"type": "number", "minimum": 0, "maximum": 5}
+            },
+            "additionalProperties": false
+          },
+          "evidence": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "notes": {"type": "array", "items": {"type": "string"}}
+        },
+        "additionalProperties": false
+      }
+    },
+    "timestamp": {"type": "string", "minLength": 1}
+  },
+  "additionalProperties": false
+}

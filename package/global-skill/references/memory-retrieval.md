@@ -1,0 +1,3 @@
+# Memory retrieval
+
+預設 top-k 8，且必須服從 context budget。只檢索 `ACTIVE`；排除 `CANDIDATE`、`QUARANTINED`、`SUPERSEDED`、`STALE`。FTS5 不可用時使用 token overlap 與結構化權重。`.workers-group/config/retrieval-policy.toml` 是 ranking weights 的唯一 project-scoped policy；9 個 allowlisted 欄位都必須是 0..1 numeric。Ranking 實際納入文字 relevance、scope/module/role/structured tags context、confidence、authority、success/useful history、recency/last verified、expiry staleness、conflict relations 與 failure/harmful history；module 不得以 policy 外固定 bonus 加分。每次檢索寫入 ledger，記錄 query fingerprint、task、role、strategy 與選取項目。後續 feedback 必須以該 ledger ID 綁定 existing/readable、通過 memory guard 的 evidence，原子更新 usage/outcome/helpful 與 memory useful/harmful counters，且 counters 會影響後續排序。

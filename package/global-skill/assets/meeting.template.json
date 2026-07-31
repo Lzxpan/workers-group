@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "meetingId": "WG-MEETING-0001",
+  "timestamp": "2026-07-30T00:00:00+00:00",
+  "attendees": ["workers_boss", "workers_planner"],
+  "agenda": "確認範圍、風險與 acceptance criteria。",
+  "facts": [],
+  "assumptions": [],
+  "alternatives": [
+    {
+      "id": "A",
+      "description": "採用 standard library 與單一 append-only JSONL。",
+      "evidence": ["path/to/alternative-a-evidence.json"],
+      "feasibility": "可在既有 Python 3.12 執行。",
+      "implementation_impact": "修改一個治理 script 與測試。",
+      "validation_method": "執行 focused unittest 與 concurrency test。",
+      "risks": ["lock contention"],
+      "rollback": "還原前一版 script。",
+      "owner": "workers_executor",
+      "affected_acceptance_criteria": ["AC-001"],
+      "affected_memories": [],
+      "affected_skill_rules": ["meeting-protocol"]
+    },
+    {
+      "id": "B",
+      "description": "沿用 StateStore atomic JSON 文件。",
+      "evidence": ["path/to/alternative-b-evidence.json"],
+      "feasibility": "可執行，但不是 append-only。",
+      "implementation_impact": "新增獨立 audit 文件。",
+      "validation_method": "執行 atomic write recovery test。",
+      "risks": ["無法保留完整歷史"],
+      "rollback": "移除新增 audit 文件。",
+      "owner": "workers_planner",
+      "affected_acceptance_criteria": ["AC-001"],
+      "affected_memories": [],
+      "affected_skill_rules": ["workflow-state-machine"]
+    }
+  ],
+  "decisions": ["採用 alternative A。"],
+  "actions": [
+    {
+      "description": "實作並驗證 alternative A。",
+      "owner": "workers_executor",
+      "due_state": "READY_FOR_QA"
+    }
+  ],
+  "evidence": []
+}

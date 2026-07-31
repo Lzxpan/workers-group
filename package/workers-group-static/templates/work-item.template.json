@@ -1,0 +1,11 @@
+{
+  "id": "WI-001",
+  "title": "實作已核准的工作項目",
+  "description": "只修改已指派檔案並保存可重現 evidence。",
+  "owner": "workers_executor",
+  "dependencies": [],
+  "acceptance_criterion_ids": ["AC-001"],
+  "status": "NOT_STARTED",
+  "blockers": [],
+  "evidence": []
+}

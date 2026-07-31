@@ -1,0 +1,15 @@
+.workers-group/runtime/
+.workers-group/state/
+.workers-group/reports/
+.workers-group/evidence/
+.workers-group/memory/
+.workers-group/self-improvement/backups/
+.workers-group/evidence/raw/
+.workers-group/**/*.lock
+.workers-group/**/*.tmp
+.workers-group/**/transcript*
+*.db-wal
+*.db-shm
+__pycache__/
+*.py[cod]
+.superpowers/

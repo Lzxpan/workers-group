@@ -1,0 +1,7 @@
+version = "1.0.0"
+engine = "skill_doctor"
+low_risk_auto_apply = true
+high_risk_state = "AWAITING_HUMAN_APPROVAL"
+arbitrary_code_allowed = false
+arbitrary_shell_allowed = false
+free_form_patch_allowed = false

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Workers Group Acceptance Criterion",
+  "type": "object",
+  "required": ["id", "requirement", "validation_method", "required_evidence", "owner", "status", "evidence", "verdict"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^AC-[0-9]+$"},
+    "requirement": {"type": "string", "minLength": 1},
+    "validation_method": {"type": "string", "minLength": 1},
+    "required_evidence": {"type": "array", "items": {"type": "string"}},
+    "owner": {"enum": ["workers_boss", "workers_planner", "workers_pm", "workers_executor", "workers_qa"]},
+    "status": {"enum": ["NOT_VERIFIED", "PASS", "FAIL", "PARTIAL", "BLOCKED", "WAIVED"]},
+    "evidence": {"type": "array", "items": {"type": "string"}},
+    "verdict": {"enum": [null, "PASS", "FAIL", "PARTIAL", "NOT_VERIFIED", "BLOCKED"]}
+  },
+  "additionalProperties": false
+}

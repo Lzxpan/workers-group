@@ -1,0 +1,8 @@
+version = 1
+initial_status = "CANDIDATE"
+activation_reviewers = ["workers_boss", "workers_qa"]
+durable_types = ["EPISODIC", "SEMANTIC", "PROCEDURAL", "DECISION", "FAILURE", "PREFERENCE", "SKILL_EVOLUTION"]
+conflict_status = "QUARANTINED"
+forbid_raw_transcript = true
+require_redaction_before_write = true
+require_redaction_before_export = true
