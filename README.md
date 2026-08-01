@@ -1,5 +1,9 @@
 # 打工人集團 Workers Group
 
+目前版本：`v0.2.0`
+
+版號由 [VERSION](VERSION) 統一管理，僅供 repository 與 release 使用；全域安裝器不會把它帶入 Codex 使用者資料夾。
+
 <p align="center">
   <img src="docs/assets/workers-group-control-room-clean.png" alt="打工人集團：一位使用者與五位智慧工作角色" width="100%">
 </p>
@@ -80,6 +84,20 @@ scripts/install-global.ps1  安裝器
 scripts/uninstall-global.ps1  解除安裝器
 docs/                       安裝與安全說明
 ```
+
+## 版本歷程
+
+### v0.2.0 — 2026-08-01
+
+新增正式版號與 README 版本歷程，整理範圍為 2026-07-31 至 2026-08-01。公開素材保留圖像結構，只改不適合公開的文字；驗收要在目標 repository 獨立重跑，發布後再用新的 clone 確認。檢查成功不等於正式安裝或發布已完成。
+
+### v0.1.1 — 2026-07-31
+
+修正公開說明圖與文案（[恢復公開說明圖並移除內部文案](https://github.com/Lzxpan/workers-group/commit/944e9a605ecc8a24ca119b8b5752f85b7b64c8dc)）。
+
+### v0.1.0 — 2026-07-31
+
+首次發布全域 Skill（[發布打工人集團全域 Skill](https://github.com/Lzxpan/workers-group/commit/2903620a10c51cae7d53793089619ad4e584ee66)）。
 
 ## 授權
 
