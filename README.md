@@ -1,28 +1,74 @@
 # 打工人集團
 
-> 把複雜任務做成可交接、可驗證、有人負責的協作流程。
+> 讓複雜任務不只「做完」，而是**可交接、可驗證、有人負責**。
 
-`orchestrating-workers-group` 是給 Codex 使用的協作 Skill。它把一件需要多人分工的工作，拆成規劃、執行、證據與獨立 QA（品質驗證）四個可追蹤的階段；最後只有通過驗收的結果才能結案。
+`orchestrating-workers-group` 是給 Codex 使用的協作 Skill。它把需要多角色合作的任務，整理成一條可追溯的交付路徑：先對齊目標，再分工實作、保存證據，最後交由獨立 QA（品質驗證）判定實際完成範圍。
+
+[快速開始](#快速開始) · [能力地圖](#功能與用途) · [角色分工](#五個固定角色) · [工作流程](#工作流程架構) · [安裝邊界](#安裝方式)
+
+> [!TIP]
+> 適合跨模組改動、高風險決策、多人協作，或你希望每個「完成」都能附上可重跑證據的任務。
 
 ## 功能與用途
 
-- **先釐清再動工**：由 Boss 對齊目標、交付物、授權範圍與成功條件。
-- **固定分工、責任明確**：Planner、PM、Executor、QA 各自負責規劃、推進、實作與獨立驗證。
-- **以證據取代口頭完成**：執行指令、輸出與驗收結果會成為可讀的 evidence（證據）。
-- **獨立 QA 閘門**：QA 在唯讀邊界重跑驗證；沒有 `PASS` 與 evidence，不能宣告完成。
-- **誠實標示邊界**：沒實際跑過的 browser、provider、hardware 或外部服務，一律保留 `NOT VERIFIED`，不把 build 成功說成正式環境成功。
-- **支援長任務治理**：透過 Task Charter、會議紀錄、狀態機、memory 與 Hook，讓多階段任務可追溯、可續作。
+### 十個公開可查的能力
+
+| 能力 | 解決什麼問題 | 公開佐證 |
+| --- | --- | --- |
+| 1. 任務授權與目標對齊 | 在動工前把目標、範圍與交付物寫清楚。 | [Task Charter 模板](assets/task-charter.template.json) · [建立工具](scripts/create_task.py) |
+| 2. 五角色與單一責任 | 將整合、規劃、流程、實作、驗收分開，避免一人自說自話。 | [角色合約](references/role-contracts.md) · [角色模型](references/role-operating-model.md) |
+| 3. 狀態、所有權與可回復流程 | 讓工作知道現在在哪一關、誰負責，以及卡住後從哪裡續做。 | [流程狀態機](references/workflow-state-machine.md) · [狀態儲存](scripts/state_store.py) · [轉換驗證](scripts/validate_transition.py) |
+| 4. 會議與交接 | 把關鍵決定、替代方案與下一位負責人留成結構化紀錄。 | [會議劇本](references/meeting-playbook.md) · [會議工具](scripts/meeting_record.py) |
+| 5. Evidence-first 與獨立 QA | 用命令、輸出與產物證據支撐交付，並交由獨立 QA 重跑。 | [evidence 說明](references/acceptance-and-evidence.md) · [QA report 模板](assets/qa-report.template.json) · [報告驗證](scripts/validate_report.py) |
+| 6. 誠實的未驗證邊界 | 不把 build 成功延伸成未實測的 runtime、browser、hardware 或外部服務成功。 | [Skill 邊界](SKILL.md) · [evidence 邊界](references/acceptance-and-evidence.md) |
+| 7. 隱私導向的長期記憶（memory） | 以 redaction（遮蔽）和審查保護可重用經驗，支援儲存、檢索、整理與修復。 | [memory 架構](references/memory-architecture.md) · [遮蔽工具](scripts/memory_guard.py) · [儲存工具](scripts/memory_store.py) · [檢索工具](scripts/memory_retriever.py) · [整理工具](scripts/memory_consolidator.py) · [修復工具](scripts/memory_repair.py) |
+| 8. 受控的 Skill Doctor 與 rollback | 以結構化提案處理可驗證改善；高風險變更停在真人核准。 | [改善政策](references/self-improvement-policy.md) · [提案模板](assets/improvement-proposal.template.json) · [Skill Doctor](scripts/skill_doctor.py) |
+| 9. 技能席與問責評分卡（scorecard） | 把專門顧問建議與角色表現評估留在可追溯、不可越權的範圍。 | [能力與技能席](references/intelligence-tiers.md) · [成長規則](references/accountability-and-growth.md) · [技能席模板](assets/skill-seat.template.json) · [評分工具](scripts/evaluate_scorecard.py) · [評分卡儲存](scripts/scorecard_store.py) |
+| 10. 已設定 host 的生命週期掛鉤（configured host Hook）與機械防呆 | 在已設定的 Codex host 環境中，提供 lifecycle 提示、範圍檢查、路徑支援、結構檢查與壓力情境測試。 | [Hook 說明](references/hooks-reference.md) · [Hook dispatcher](scripts/workers_group_hook.py) · [Skill 結構檢查](scripts/validate_skill.py) · [路徑支援](scripts/workers_group_paths.py) · [Hook 測試](tests/test_hooks.py) · [壓力情境](tests/scenarios/stress-scenarios.json) |
+
+這些能力的目的不是增加流程，而是讓每個承諾都有範圍、負責人與可回看的依據。
+
+<details>
+<summary>展開查看完整公開工具與模板</summary>
+
+目前公開目錄有 16 個 Python scripts；以下依五個工具組列出。它們是可檢視的工具本體，是否能執行仍取決於所在專案與 host runtime。
+
+| 工具組 | 公開 scripts | 能帶來的好處 |
+| --- | --- | --- |
+| 任務與交接 | [create_task.py](scripts/create_task.py) · [meeting_record.py](scripts/meeting_record.py) | 建立結構化任務與交接紀錄。 |
+| 狀態與驗證 | [state_store.py](scripts/state_store.py) · [validate_transition.py](scripts/validate_transition.py) · [validate_report.py](scripts/validate_report.py) · [validate_skill.py](scripts/validate_skill.py) | 保存狀態，並檢查流程、報告與 Skill 結構。 |
+| 隱私記憶 | [memory_guard.py](scripts/memory_guard.py) · [memory_store.py](scripts/memory_store.py) · [memory_retriever.py](scripts/memory_retriever.py) · [memory_consolidator.py](scripts/memory_consolidator.py) · [memory_repair.py](scripts/memory_repair.py) | 遮蔽敏感內容、保存、檢索、整理與修復長期記憶。 |
+| 改善與問責 | [skill_doctor.py](scripts/skill_doctor.py) · [evaluate_scorecard.py](scripts/evaluate_scorecard.py) · [scorecard_store.py](scripts/scorecard_store.py) | 以結構化方式處理改善提案與證據支持的評分。 |
+| host 整合 | [workers_group_hook.py](scripts/workers_group_hook.py) · [workers_group_paths.py](scripts/workers_group_paths.py) | 為已設定的 host 提供 lifecycle dispatcher 與穩定路徑支援。 |
+
+| 模板種類 | 用途與好處 |
+| --- | --- |
+| [task-charter.template.json](assets/task-charter.template.json) | 把任務目標、範圍與驗收先寫清楚。 |
+| [skill-seat.template.json](assets/skill-seat.template.json) | 限定專門顧問輸入的範圍與責任。 |
+| [scorecard.template.json](assets/scorecard.template.json) | 用可追溯欄位記錄角色表現評估。 |
+| [role-report.template.json](assets/role-report.template.json) | 讓角色交接有一致的結果與證據格式。 |
+| [qa-report.template.json](assets/qa-report.template.json) | 讓獨立 QA 清楚記錄 verdict 與範圍。 |
+| [memory.template.json](assets/memory.template.json) | 以受控欄位保存可重用的經驗候選。 |
+| [meeting.template.json](assets/meeting.template.json) | 把關鍵決定、行動與後續狀態留成紀錄。 |
+| [improvement-proposal.template.json](assets/improvement-proposal.template.json) | 讓改善提案具備風險、驗證與 rollback 脈絡。 |
+
+</details>
 
 ## 重要說明
 
-- 這個 repository 是目前全域 `orchestrating-workers-group` 的**技能本體來源**，不包含自動安裝器、外部帳號設定或完整 runtime。
-- 請只在複雜、多階段、高風險，或明確需要規劃、實作與 QA 分離的工作中啟用；單行低風險修改或一般問答不需要強制啟動。
-- 真實憑證、不可逆資料變更、外部帳號／費用與重大產品方向，仍必須由真人明確核准。
-- 此 Skill 的規則不會替代專案既有的 `AGENTS.md`、安全政策或使用者指示；衝突時應先停下並說明。
+> [!WARNING]
+> 此 repository 是目前全域 `orchestrating-workers-group` 的**技能本體來源**。它不包含自動安裝器、全域 Hook 設定、帳號憑證或完整 host runtime；不能把 clone 成功當成整套環境已可執行。
+
+> [!NOTE]
+> memory、Hook 與 scorecard 需要所在專案或 Codex host 的對應 runtime／設定才會運作。公開原始碼可供檢視與部署，不代表每一項機械工具能在乾淨 clone 中直接執行。
+
+- 請在複雜、多階段、高風險，或明確需要規劃、實作與 QA 分離的工作中啟用。
+- 真實憑證、不可逆資料變更、外部帳號或費用，以及重大產品方向，仍需要真人明確核准。
+- 本 Skill 不取代專案既有的 `AGENTS.md`、安全政策或使用者指示；規則衝突時，應先停下並說明。
 
 ## 安裝方式
 
-此 repository 沒有自動安裝腳本。若你的 Codex 環境已具備對本機 Skill 的發現與執行支援，可依環境既有的部署流程將整個目錄放到 Skill 根目錄下，例如：
+此 repository 沒有自動安裝腳本。若你的 Codex host 已支援本機 Skill，請依既有部署與核准流程採用完整目錄，而不是只複製 `SKILL.md`：
 
 ```text
 <CodexHome>/skills/orchestrating-workers-group/
@@ -34,32 +80,50 @@
 └── tests/
 ```
 
-安裝前請先確認目標環境的變更管理與核准流程；不要直接覆蓋正在使用的版本。此 repository 未提供或設定任何全域 Hook、帳號憑證或 host runtime。
+採用後請由你的 host 重新載入或重新發現 Skill，再確認它能被列出與呼叫。不要直接覆蓋正在使用的版本；全域 Hook、runtime 與外部設定仍應按你的環境變更管理流程另外審查。
 
 ## 使用教學
 
-### 1. 判斷是否該啟用
+### 快速開始
 
-適合：跨模組改動、需要多人角色分工、風險高、要保留證據，或使用者明確指定本 Skill 的任務。
-
-不必啟用：單純問答、拼字修正、單行低風險調整，或不需要獨立 QA 的小工作。
-
-### 2. 在任務開頭明確呼叫
+在任務一開始明確呼叫 Skill，並把可驗收的事情說清楚：
 
 ```text
 $orchestrating-workers-group
 
-請把匯出流程改為可重試，保留舊資料格式；請先規劃、實作、做獨立 QA，並附上可重跑的驗證證據。
+請把匯出流程改為可重試，保留舊資料格式。
+請先規劃、實作、做獨立 QA，並附上可重跑的驗證證據。
 ```
 
-### 3. 期待的工作節奏
+### 寫出好任務的最小模板
 
-1. Boss 建立 Task Charter，確認目標、範圍、風險與驗收條件。
-2. Planner 制定可驗收計畫，並由 Executor 與 QA 分別檢查可行性與可測性。
-3. PM 維護狀態、角色分工與檔案所有權，避免多人同時修改同一檔案。
-4. Executor 進行最小安全實作，保存指令、輸出與產物 evidence。
-5. QA 以獨立、唯讀方式重新驗證；失敗就帶著 evidence 回到執行階段。
-6. Boss 只回報實際驗證過的範圍，並以 `CLOSED`、`BLOCKED`、`FAILED` 或 `NOT VERIFIED` 清楚交代結果。
+```text
+$orchestrating-workers-group
+
+目標：
+範圍與不可改動的部分：
+完成後要能驗證的結果：
+已知風險或需要真人決定的事項：
+不要把哪些未實測範圍宣稱為完成：
+```
+
+### 何時使用
+
+| 情境 | 建議 |
+| --- | --- |
+| 跨模組改動、資料遷移、需要 rollback 的變更 | 啟用，先把範圍與驗證方式寫清楚。 |
+| 多人或多代理需要分工 | 啟用，讓 PM 維護檔案所有權與交接。 |
+| 只改一行字、一般問答、低風險小修 | 通常不必啟用。 |
+
+### 五個固定角色
+
+| 角色 | 專注的責任 | 不能取代 |
+| --- | --- | --- |
+| Boss／老大 | 對齊授權、整合證據、向真人誠實回報。 | 獨立 QA verdict。 |
+| Planner／軍師 | 拆解工作、風險、依賴與可驗證計畫。 | Executor 的實作所有權。 |
+| PM／管事 | 維護狀態、檔案所有權、交接與 blocker。 | QA gate 或其他角色的決定。 |
+| Executor／打工仔 | 在已分配範圍內最小實作，保存可重跑 evidence。 | 自己工作的 QA verdict。 |
+| QA／驗收官 | 用唯讀、獨立方式驗證範圍並給出 verdict。 | production 實作或未跑環境的證明。 |
 
 ## 文件結構
 
@@ -67,11 +131,13 @@ $orchestrating-workers-group
 .
 ├── SKILL.md       # 啟動條件、協作規則與階段導讀
 ├── agents/        # Codex 介面描述
-├── assets/        # Task Charter、QA report、會議與 memory 模板
-├── references/    # 角色、流程、證據、Hook 與治理規範
-├── scripts/       # 狀態、報告、會議與 Skill Doctor 的驗證工具
-└── tests/         # 對核心治理規則的自動化測試
+├── assets/        # Task Charter、QA report、會議、memory 等模板
+├── references/    # 角色、流程、evidence、Hook 與治理說明
+├── scripts/       # 狀態、報告、會議、memory 與 Skill Doctor 工具
+└── tests/         # 核心治理規則與壓力情境的測試
 ```
+
+想先了解行為，從 [SKILL.md](SKILL.md) 開始；想查規則，閱讀 [references/](references/)；想檢視機械工具，查看 [scripts/](scripts/)；想了解測試覆蓋，前往 [tests/](tests/)。
 
 ## 工作流程架構
 
@@ -79,17 +145,17 @@ $orchestrating-workers-group
 flowchart LR
     A[任務與授權] --> B[Task Charter 與 kickoff]
     B --> C[規劃與可測性審查]
-    C --> D[實作與 evidence]
-    D --> E[獨立 QA]
-    E -->|PASS| F[Boss 交付結果]
-    E -->|需要修正| D
+    C --> D{需要真人核准？}
+    D -->|是| E[等待人核]
+    E --> C
+    D -->|否| F[實作與 evidence]
+    F --> G[獨立 QA]
+    G -->|PASS| H[Boss 交付已驗證範圍]
+    G -->|需要修正| F
+    G -->|NOT VERIFIED| I[保留未驗證邊界]
 ```
 
-這個流程的關鍵不是增加角色數量，而是讓每個結論都能回到負責人與可重跑的證據。
-
-## 版本歷程
-
-- 2026-08-02：整理為僅保留目前全域 Skill 本體的公開內容，並新增 GitHub README。
+**文字版流程：** 先對齊授權，再規劃與分工；如果需要新的真人決定，就停在等待人核。Executor 保存實作 evidence 後，QA 獨立重跑。QA 要求修正時回到實作；無法實測的範圍標為 `NOT VERIFIED`，不會被包裝成已完成。只有獨立 QA 實際驗證支持的範圍，才由 Boss 對外說明。
 
 ## 版權與授權
 
