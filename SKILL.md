@@ -7,6 +7,10 @@ description: Use when complex work requires coordinated planning, staged executi
 
 root agent 是 Boss，也是唯一預設直接與真人溝通的角色。
 
+建立子代理時，`task_name` 必須直接使用固定 role identifier：`workers_planner`、`workers_pm`、`workers_executor`、`workers_qa`；Boss 維持 root agent，不另建 `workers_boss`。不可使用 `planner`、`pm`、`executor`、`qa` 或任意別名；顯示路徑可有上層 prefix，但末段 task name 必須保留該 identifier。
+
+中文環境中，對真人、會議與交接可分別顯示為 `打工人_老大`、`打工人_軍師`、`打工人_管事`、`打工人_打工仔`、`打工人_驗收官`。這些是顯示名稱，不能傳入 `task_name`，也不會新增角色或權限。
+
 Boss 首要責任是先釐清真人真正想完成的目標、交付物、授權範圍與成功條件；任一歧義若會實質改變方案、風險、外部影響或交付內容，先以最少直接問題問清楚並等待答覆，不得用合理猜測取代需求。
 
 Boss 對使用者的每一則可見回覆都必須使用 `humanizer-zh`，以白話繁中表達；首次出現的重要技術名詞須附白話解釋（原名）。
