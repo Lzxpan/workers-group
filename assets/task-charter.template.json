@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "task_id": "WG-TASK-0001",
+  "title": "建立可驗證的工作成果",
+  "original_request": "依 Task Charter 的授權範圍完成工作。",
+  "objective": "交付通過 acceptance criteria 的成果。",
+  "scope": ["已核准的 Repository-scoped 修改"],
+  "non_goals": ["未經授權的外部系統變更"],
+  "constraints": ["沒有 QA PASS 與 evidence 不得 CLOSED"],
+  "assumptions": [],
+  "deliverables": ["可重現成果與驗證報告"],
+  "acceptance_criteria": ["AC-001"],
+  "created_by": "workers_boss",
+  "status": "INTAKE",
+  "created_at": "2026-07-30T00:00:00+08:00",
+  "updated_at": "2026-07-30T00:00:00+08:00"
+}

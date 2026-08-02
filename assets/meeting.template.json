@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "meetingId": "WG-MEETING-0001",
+  "timestamp": "2026-08-02T00:00:00+00:00",
+  "meeting_type": "kickoff",
+  "chair": "workers_boss",
+  "attendees": [
+    "workers_boss",
+    "workers_planner",
+    "workers_pm",
+    "workers_executor",
+    "workers_qa"
+  ],
+  "quorum": {
+    "minimum_attendees": 5,
+    "required_roles": [
+      "workers_boss",
+      "workers_planner",
+      "workers_pm",
+      "workers_executor",
+      "workers_qa"
+    ]
+  },
+  "agenda": "確認範圍、技能席、風險、驗收條件與停點。",
+  "facts": [],
+  "assumptions": [],
+  "alternatives": [
+    {
+      "id": "A",
+      "description": "採用受版控的 canonical source 與標準函式庫。",
+      "evidence": ["path/to/alternative-a-evidence.json"],
+      "feasibility": "可在既有 Python 3.12 執行。",
+      "implementation_impact": "修改治理 script、schema 與測試。",
+      "validation_method": "執行 focused unittest 與獨立 QA。",
+      "risks": ["並行寫入衝突"],
+      "rollback": "還原前一版受版控來源。",
+      "owner": "workers_executor",
+      "affected_acceptance_criteria": ["AC-001"],
+      "affected_memories": [],
+      "affected_skill_rules": ["meeting-protocol"]
+    },
+    {
+      "id": "B",
+      "description": "維持既有來源而不補齊治理契約。",
+      "evidence": ["path/to/alternative-b-evidence.json"],
+      "feasibility": "可執行，但無法滿足治理藍圖。",
+      "implementation_impact": "不改程式。",
+      "validation_method": "確認必要契約測試失敗。",
+      "risks": ["角色與評分規則持續斷鏈"],
+      "rollback": "不適用。",
+      "owner": "workers_planner",
+      "affected_acceptance_criteria": ["AC-001"],
+      "affected_memories": [],
+      "affected_skill_rules": ["workflow-state-machine"]
+    }
+  ],
+  "decisions": ["採用 alternative A。"],
+  "decision_records": [
+    {
+      "decision": "採用 alternative A。",
+      "owner": "workers_boss",
+      "rationale": "可驗證、可回復，且不需寫入全域環境。",
+      "evidence": ["path/to/decision-evidence.json"]
+    }
+  ],
+  "dissent_records": [],
+  "pm_record": {
+    "role": "workers_pm",
+    "recorded_actions": ["建立責任與驗收追蹤。"],
+    "blockers": [],
+    "resume_condition": "所有受指派工作完成後進入獨立 QA。"
+  },
+  "actions": [
+    {
+      "description": "實作並驗證 alternative A。",
+      "owner": "workers_executor",
+      "due_state": "QA"
+    }
+  ],
+  "evidence": ["path/to/kickoff-evidence.json"]
+}
