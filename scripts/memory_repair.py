@@ -146,6 +146,26 @@ def _nonnegative_int(record: dict, field: str, default: int = 0) -> int:
     return value
 
 
+def _active_export_is_bound(record: dict) -> bool:
+    activation = record.get("activation")
+    if not isinstance(activation, dict):
+        return False
+    artifact = activation.get("reviewerArtifact")
+    if not isinstance(artifact, dict):
+        return False
+    reviewer = artifact.get("reviewer")
+    evidence = record.get("evidence")
+    return (
+        reviewer in {"workers_boss", "workers_qa"}
+        and reviewer != record.get("sourceRole")
+        and artifact.get("memory_id") == record.get("id")
+        and str(artifact.get("verdict", "")).upper() in {"APPROVED", "PASS"}
+        and isinstance(evidence, list)
+        and bool(evidence)
+        and artifact.get("evidence") == evidence
+    )
+
+
 def _validated_records(export_records: list[dict]) -> dict[str, list[dict]]:
     grouped = {
         "memory": [],
@@ -208,6 +228,8 @@ def _validated_records(export_records: list[dict]) -> dict[str, list[dict]]:
                     raise ValueError(f"export field must be an array: {field}")
             if not isinstance(record.get("activation", {}), dict):
                 raise ValueError("export activation must be an object")
+            if status == "ACTIVE" and not _active_export_is_bound(record):
+                record = {**record, "status": "QUARANTINED"}
             for field in ("confidence", "authority"):
                 value = record.get(field, 0.5)
                 if (

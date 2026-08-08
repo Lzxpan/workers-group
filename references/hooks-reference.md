@@ -22,4 +22,4 @@ Tool matcher 使用 Codex canonical names：`Bash|apply_patch|Edit|Write|Agent`�
 
 Repository Hooks 仍須在新 Codex session 由真人使用 `/hooks` review/trust；direct invocation 不能替代 UI runtime 驗證。
 
-Hooks 只可協助保存狀態與提示治理 gate；它們不會依 scorecard 自動授權、激活 memory、建立內部 `TRAINING_CANDIDATE`、建立 human-only `TRAINING_PROPOSAL`、提交 Hugging Face training、上傳資料或建立 Hub。這些都是 record／人核流程，並非 Hook runtime 證明。
+Hooks 只可協助保存狀態與提示治理 gate；它們可在 `CLOSED` task、QA report `PASS`、來源角色不同於 QA、可讀 repository evidence 與 memory guard 都通過時，將 verified local experience 排入自動啟用流程。Hooks 不會依 scorecard 自動授權、激活其他 memory、建立內部 `TRAINING_CANDIDATE`、建立 human-only `TRAINING_PROPOSAL`、提交 Hugging Face training、上傳資料或建立 Hub。這些都是 record／人核流程，並非 Hook runtime 證明。

@@ -23,7 +23,7 @@ from memory_store import atomic_write_text
 
 LOW_OPERATIONS = {
     "update_status_message", "retrieval_weights", "test_fixture", "diagnostics",
-    "path_fix", "optional_schema_field", "text_clarification",
+    "path_fix", "optional_schema_field", "text_clarification", "learned_skill_rule",
 }
 HIGH_OPERATIONS = {
     "change_qa_policy", "change_evidence_policy", "change_security_policy",
@@ -43,6 +43,8 @@ WEIGHT_FIELDS = {
     "recency_weight", "success_weight", "conflict_penalty", "staleness_penalty",
     "harmful_history_penalty",
 }
+AUTO_RULE_START = "<!-- WG_AUTO_LEARNING_RULES_START -->"
+AUTO_RULE_END = "<!-- WG_AUTO_LEARNING_RULES_END -->"
 
 
 def _sha(data: bytes) -> str:
@@ -85,11 +87,26 @@ class SkillDoctor:
         return {"allowed": True, "status": "LOW_RISK_APPROVED", "reason": "structured LOW-risk operation"}
 
     def _guard(self, proposal: dict) -> tuple[dict | None, str | None]:
-        rendered = json.dumps(proposal, ensure_ascii=False, sort_keys=True)
+        guarded_fields = {
+            "target", "expectedSha256", "testEvidence", "qaEvidence", "bossEvidence", "bossReviewEvidence",
+            "fingerprint", "backupPath", "backupManifestSha256", "isolatedSha256", "proposalId",
+        }
+        def guarded(value: object) -> object:
+            if isinstance(value, dict):
+                return {
+                    key: ("<repository-reference>" if key in guarded_fields else guarded(item))
+                    for key, item in value.items()
+                }
+            if isinstance(value, list):
+                return [guarded(item) for item in value]
+            return value
+
+        guard_input = guarded(proposal)
+        rendered = json.dumps(guard_input, ensure_ascii=False, sort_keys=True)
         guard = redact_and_validate(rendered)
         if not guard["accepted"]:
             return None, "proposal contains secret or unnecessary PII"
-        return json.loads(guard["redacted"]), None
+        return proposal, None
 
     def _fingerprint(self, proposal: dict) -> str:
         if proposal.get("fingerprint"):
@@ -106,7 +123,7 @@ class SkillDoctor:
 
     def _write_json(self, path: Path, value: dict) -> None:
         rendered = json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
-        if not redact_and_validate(rendered)["accepted"]:
+        if self._guard(value)[0] is None:
             raise ValueError("refusing to persist unsafe proposal data")
         atomic_write_text(path, rendered)
 
@@ -368,6 +385,8 @@ class SkillDoctor:
             return relative.startswith(schemas) and relative.endswith(".schema.json")
         if operation == "text_clarification":
             return relative in allowed_references
+        if operation == "learned_skill_rule":
+            return relative == "SKILL.md"
         return False
 
     def _internal_invariants(self, target: Path | None, patched: str | None, proposal: dict) -> list[str]:
@@ -498,6 +517,23 @@ class SkillDoctor:
             if not isinstance(old, str) or not isinstance(new, str) or not old or original.count(old) != 1:
                 raise ValueError("operation requires one exact oldValue match and a string newValue")
             return original.replace(old, new, 1)
+        if operation == "learned_skill_rule":
+            rule = proposal.get("rule")
+            if (
+                not isinstance(rule, str)
+                or not rule.startswith("- ")
+                or "\n" in rule
+                or "\r" in rule
+                or len(rule) > 480
+            ):
+                raise ValueError("learned skill rule must be one short bullet")
+            if original.count(AUTO_RULE_START) != 1 or original.count(AUTO_RULE_END) != 1:
+                raise ValueError("Skill auto-learning markers must occur exactly once")
+            start = original.index(AUTO_RULE_START)
+            end = original.index(AUTO_RULE_END)
+            if start >= end:
+                raise ValueError("Skill auto-learning markers are out of order")
+            return original.replace(AUTO_RULE_END, f"{rule}\n{AUTO_RULE_END}", 1)
         if operation == "optional_schema_field":
             field, schema = proposal.get("field"), proposal.get("schema")
             if not isinstance(field, str) or not field or not isinstance(schema, dict):

@@ -652,12 +652,12 @@ class HookContractTests(WorkersGroupTestCase):
                 "evidence": ["memory-evidence.txt"],
             })
             reviewer = {
-                "reviewer": "workers_boss",
+                "reviewer": "workers_qa",
                 "memory_id": memory_id,
                 "verdict": "APPROVED",
                 "evidence": ["memory-evidence.txt"],
             }
-            store.review(memory_id, "ACTIVE", actor="workers_boss", reviewer_artifact=reviewer)
+            store.review(memory_id, "ACTIVE", actor="workers_qa", reviewer_artifact=reviewer)
             queue = runtime / "pending-memory-queue.jsonl"
             queue.write_text("".join(
                 json.dumps({

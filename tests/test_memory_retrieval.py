@@ -223,6 +223,7 @@ class MemoryRetrievalTests(WorkersGroupTestCase):
                 outcome="SUCCESS",
                 helpful=True,
                 evidence=[evidence],
+                qa_verdict="PASS",
             )
             self.assertTrue(result["recorded"], result)
             with closing(sqlite3.connect(retriever.store.db_path)) as connection:
@@ -357,6 +358,7 @@ class MemoryRetrievalTests(WorkersGroupTestCase):
                     "--usage", "CITED",
                     "--outcome", "SUCCESS",
                     "--helpful", "true",
+                    "--qa-verdict", "PASS",
                     "--evidence", evidence,
                 ],
                 cwd=ROOT,

@@ -269,6 +269,8 @@ class MemoryStore:
     ) -> dict:
         if actor not in {"workers_boss", "workers_qa"}:
             raise PermissionError("only workers_boss or workers_qa may activate memory")
+        if row["source_role"] == actor:
+            raise PermissionError("memory source role may not review its own activation")
         if not isinstance(reviewer_artifact, dict):
             raise ValueError("ACTIVE review requires a structured reviewer_artifact")
         allowed_fields = {"actor", "reviewer", "memory_id", "verdict", "evidence"}
@@ -332,6 +334,63 @@ class MemoryStore:
             "verdict": str(reviewer_artifact["verdict"]).upper(),
             "evidence": [str(path) for path in artifact_paths],
         }
+
+    def add_verified_experience(self, record: dict) -> dict:
+        """Activate one local success only after a pre-existing QA PASS evidence set."""
+        if not isinstance(record, dict):
+            raise ValueError("verified experience must be an object")
+        if record.get("source_type", record.get("sourceType")) != "verified_execution":
+            raise ValueError("verified experience must use verified_execution")
+        source_role = record.get("source_role", record.get("sourceRole"))
+        if source_role not in {"workers_planner", "workers_pm", "workers_executor"}:
+            raise PermissionError("verified experience source must be a non-QA fixed role")
+        if str(record.get("closed_status", record.get("closedStatus", ""))) != "CLOSED":
+            raise ValueError("verified experience requires a CLOSED task")
+        if str(record.get("scope", "")) != "repository":
+            raise ValueError("verified experience scope must be repository")
+        if str(record.get("memoryType", record.get("memory_type", ""))).upper() not in {
+            "EPISODIC", "SEMANTIC", "PROCEDURAL", "DECISION",
+        }:
+            raise ValueError("verified experience must use a reusable local memoryType")
+        evidence = record.get("evidence")
+        if not isinstance(evidence, list) or not evidence:
+            raise ValueError("verified experience requires evidence")
+        evidence_paths = [
+            self._readable_repository_file(item, "verified experience evidence")
+            for item in evidence
+        ]
+        qa_report = record.get("qa_report", record.get("qaReport"))
+        report_path = self._readable_repository_file(qa_report, "verified experience QA report")
+        try:
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError("verified experience QA report must be UTF-8 JSON") from exc
+        task_id = record.get("source_task_id", record.get("sourceTaskId"))
+        report_evidence = report.get("evidence")
+        if (
+            report.get("task_id") != task_id
+            or report.get("role") != "workers_qa"
+            or str(report.get("overall_verdict", "")).upper() != "PASS"
+            or not isinstance(report_evidence, list)
+        ):
+            raise ValueError("verified experience requires a matching QA PASS report")
+        report_paths = [
+            self._readable_repository_file(item, "verified experience QA evidence")
+            for item in report_evidence
+        ]
+        if set(report_paths) != set(evidence_paths):
+            raise ValueError("verified experience QA evidence must exactly bind memory evidence")
+        memory_id = self.add_candidate(record)
+        current = self.get(memory_id)
+        if current["status"] != "CANDIDATE":
+            return {"id": memory_id, "status": current["status"]}
+        reviewer = {
+            "actor": "workers_qa",
+            "memory_id": memory_id,
+            "verdict": "PASS",
+            "evidence": evidence,
+        }
+        return self.review(memory_id, "ACTIVE", actor="workers_qa", reviewer_artifact=reviewer)
 
     def add_candidate(self, record: dict) -> str:
         if not isinstance(record, dict) or not isinstance(record.get("content"), str) or not record["content"].strip():

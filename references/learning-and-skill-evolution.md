@@ -1,17 +1,17 @@
 # Learning and skill evolution
 
-本文件定義從工作 evidence 到可治理改善的閉環。目標是保留可重用、已遮蔽且可追溯的經驗；它不是讓任何角色自動改規則、激活記憶或訓練模型的捷徑。
+本文件定義從工作 evidence 到可治理改善的閉環。目標是保留可重用、已遮蔽且可追溯的經驗；已驗證、受限且可回復的本機改善與成功經驗會自動落地，不需要向真人重複確認。
 
 ## Required lifecycle
 
 1. **Evidence**：由實際工作、會議、驗證、failure 或 feedback 產生可讀、Repository 內的 evidence。先區分 verified fact、assumption、inference、failure 與 `NOT_VERIFIED`。
 2. **Redaction**：移除 secrets、credentials、私人資料、未經授權的外部內容與不必要細節；保留能支持學習結論的 provenance、範圍與限制。
-3. **`CANDIDATE`**：透過 `memory_guard.py` 以候選狀態保存，連結 evidence path 和必要 metadata。任何角色都可提出 candidate，但不能自行升級。
-4. **Authorized review**：Boss 或符合 [memory-architecture.md](memory-architecture.md) 條件的 QA reviewer 檢查相關性、redaction、證據綁定、衝突、sensitivity 與可重用性，產生結構化 reviewer artifact。
-5. **`ACTIVE`**：只有 reviewer artifact 將 `memory_id`、授權 reviewer、`APPROVED` 或相容的 QA `PASS` verdict 與正確 evidence 精確綁定後才可 activation；缺件、衝突或無法驗證時維持 `CANDIDATE`、標記其他狀態或拒絕。
+3. **`CANDIDATE`**：透過 `memory_guard.py` 以候選狀態保存，連結 evidence path 和必要 metadata。任何角色都可提出 candidate。
+4. **Verified success activation**：來源任務已 `CLOSED`、獨立 QA report 為 `PASS`、來源角色不同於 `workers_qa`、evidence 完整綁定且沒有衝突時，系統自動產生可稽核 reviewer artifact 並升為 `ACTIVE`；不需要真人確認。
+5. **`ACTIVE` boundary**：缺件、衝突、敏感、未驗證、外部或無法驗證時維持 `CANDIDATE`、標記其他狀態或拒絕；自動啟用不外推為 runtime、browser、provider、hardware 或 external service 證明。
 6. **Retrieval and feedback**：Planner 或適當角色檢索 `ACTIVE` memory，記錄採用／拒絕／過時原因與結果。retrieval 不覆蓋當前 evidence、版本控制、Task Charter 或真人指示。
-7. **Skill Doctor proposal**：只有重複、有 evidence 的改善需求才可形成結構化 proposal；它要含 risk classification、failing baseline、target、backup、expected SHA-256、validation 與 rollback，並受 [self-improvement-policy.md](self-improvement-policy.md) 約束。
-8. **Human approval for HIGH risk**：QA、evidence、security、sandbox、network、刪除、指揮鏈與本政策相關提案一律停在 `AWAITING_HUMAN_APPROVAL`。未取得明確核准不得 apply；LOW risk 也必須完整驗證、獨立 QA `PASS` 與 Boss review。
+7. **Skill Doctor proposal**：重複、有 evidence 的改善需求形成結構化 proposal；它要含 risk classification、failing baseline、target、backup、expected SHA-256、validation 與 rollback。`learned_skill_rule` 只能追加受限規則區，驗證完畢即自動 apply。
+8. **Human approval for true HIGH risk**：security、sandbox、network、刪除、credentials、外部帳號／費用、不可逆資料、模型訓練、agent 權限與核心指揮鏈提案停在 `AWAITING_HUMAN_APPROVAL`。受限自動學習與其餘 LOW operation 不等待真人，但仍必須完整驗證、獨立 QA `PASS` 與 Boss review。
 
 ## Role responsibilities at the boundaries
 
@@ -23,7 +23,7 @@
 
 ## Memory and Skill boundaries
 
-Memory 是可衰退、可衝突、需驗證的工作知識，不是命令來源。當 current source、Task Charter、真人指示或 repository policy 不一致時，記錄衝突並以較高權威／較新 evidence 處理。`CANDIDATE`、高 score、retrospective decision、positive QA 結果與 proposal 存在，均不等於 `ACTIVE` memory 或獲准 Skill 變更。
+Memory 是可衰退、可衝突、需驗證的工作知識，不是命令來源。當 current source、Task Charter、真人指示或 repository policy 不一致時，記錄衝突並以較高權威／較新 evidence 處理。`CANDIDATE`、高 score、retrospective decision、positive QA 結果與 proposal 存在本身不等於 `ACTIVE` memory 或獲准 Skill 變更；只有本文件定義的 verified-success auto activation 與 `learned_skill_rule` 流程例外。
 
 Skill Doctor 只處理結構化 `propose`、`simulate`、`apply`、`rollback`，不能接收 arbitrary code、shell 或自由格式 patch。若實作失敗或 invariants 不通過，依政策 rollback 並保存 rejected fingerprint；不得以手動直接修改核心 Skill 繞過流程。
 

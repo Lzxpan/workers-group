@@ -294,9 +294,21 @@ def _is_direct_core_write(payload: dict, root: Path | None) -> bool:
             return True
         absolute = _normalized_windows_path(target, root)
         codex_root = _normalized_windows_path(str(CODEX_HOME), None)
+        sibling_agents_root = _normalized_windows_path(
+            str(Path(CODEX_HOME).parent / ".agents"), None,
+        )
         static_root = _normalized_windows_path(str(STATIC_ROOT), None)
         for protected_root, files, prefixes in (
             (codex_root, GLOBAL_PROTECTED_FILES, GLOBAL_PROTECTED_PREFIXES),
+            (
+                sibling_agents_root,
+                {"skills/orchestrating-workers-group/skill.md"},
+                (
+                    "agents/",
+                    "skills/orchestrating-workers-group/scripts/",
+                    "skills/orchestrating-workers-group/references/",
+                ),
+            ),
             (static_root, set(), GLOBAL_STATIC_PROTECTED_PREFIXES),
         ):
             if not absolute or not protected_root:
@@ -853,7 +865,10 @@ def _process_pending_memories(root: Path, store: MemoryStore) -> dict:
                 record = json.loads(line)
                 if not isinstance(record, dict):
                     raise ValueError("candidate must be an object")
-                store.add_candidate(record)
+                if record.pop("autoActivateVerifiedExperience", False):
+                    store.add_verified_experience(record)
+                else:
+                    store.add_candidate(record)
                 processed += 1
             except ValueError as exc:
                 if "duplicate memory content" in str(exc):
@@ -891,6 +906,69 @@ def _doctor_trigger(payload: dict) -> object | None:
         if value not in (None, False, "", [], {}):
             return value
     return None
+
+
+def _verified_memory_candidate(root: Path, active: dict, payload: dict, ended_at: str) -> dict | None:
+    raw = payload.get("verifiedMemoryCandidate", payload.get("verified_memory_candidate"))
+    if not isinstance(raw, dict) or str(active.get("status")) != "CLOSED":
+        return None
+    task_id = str(active.get("task_id") or "")
+    qa_report = raw.get("qaReport", raw.get("qa_report"))
+    if not task_id or not isinstance(qa_report, str) or not qa_report.strip():
+        return None
+    try:
+        report_path = (root / qa_report).resolve()
+        report_path.relative_to(root.resolve())
+        if not report_path.is_file():
+            return None
+        report = json.loads(report_path.read_text(encoding="utf-8"))
+        evidence = report.get("evidence")
+        if (
+            report.get("task_id") != task_id
+            or report.get("role") != "workers_qa"
+            or str(report.get("overall_verdict", "")).upper() != "PASS"
+            or not isinstance(evidence, list)
+            or not evidence
+        ):
+            return None
+        resolved_evidence = []
+        for item in evidence:
+            if not isinstance(item, str) or not item.strip():
+                return None
+            path = (root / item).resolve()
+            path.relative_to(root.resolve())
+            if not path.is_file():
+                return None
+            resolved_evidence.append(item)
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
+        return None
+    source_role = raw.get("sourceRole", raw.get("source_role"))
+    memory_type = str(raw.get("memoryType", raw.get("memory_type", "PROCEDURAL"))).upper()
+    if (
+        not isinstance(source_role, str)
+        or source_role not in {"workers_planner", "workers_pm", "workers_executor"}
+        or memory_type not in {"EPISODIC", "SEMANTIC", "PROCEDURAL", "DECISION"}
+    ):
+        return None
+    candidate = {
+        "id": raw.get("id") or f"{task_id}-verified-experience",
+        "title": str(raw.get("title") or "Verified working experience")[:160],
+        "summary": str(raw.get("summary") or "QA-verified local success.")[:500],
+        "content": str(raw.get("content") or "")[:8000],
+        "source": "SessionEnd",
+        "sourceTaskId": task_id,
+        "sourceRole": source_role,
+        "sourceType": "verified_execution",
+        "closedStatus": "CLOSED",
+        "memoryType": memory_type,
+        "scope": "repository",
+        "confidence": 0.9,
+        "evidence": resolved_evidence,
+        "autoActivateVerifiedExperience": True,
+        "qaReport": qa_report,
+        "endedAt": ended_at,
+    }
+    return candidate if candidate["content"].strip() and _persistence_guard(candidate) else None
 
 
 def _continuation_count(payload: dict, event: str) -> int:
@@ -1150,6 +1228,10 @@ def dispatch(payload: dict, hook_id: str | None = None, event: str | None = None
                     if _persistence_guard(candidate):
                         _append_jsonl(_runtime(root) / "pending-memory-queue.jsonl", candidate)
                         response["memoryCandidateQueued"] = True
+                verified = _verified_memory_candidate(root, active, payload, ended_at)
+                if verified is not None:
+                    _append_jsonl(_runtime(root) / "pending-memory-queue.jsonl", verified)
+                    response["verifiedMemoryQueued"] = True
             except (OSError, ValueError, TimeoutError):
                 response["persistenceError"] = True
         response["summary"] = "Session metadata saved; raw transcript was not retained."

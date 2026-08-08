@@ -32,7 +32,7 @@ CURRENT_GOVERNANCE_CONDITIONS = (
     "已記錄的會議後，團隊可對本機、暫時、可復原、有證據的開發工作主動診斷", "若本機開發環境由團隊從零設計",
     "確認可重複的流程失敗或使用者修正時，Boss 主動建立已遮蔽的 Skill Doctor proposal", "使用者要求整理過往任務的經驗、修正或版本歷程時",
     "公開產品與推廣畫面不能放內部規則、驗收準則、修正紀錄或團隊對話", "QA 在實際 target repository 獨立重跑",
-    "交付／完成宣稱只可涵蓋實際獨立重跑的 scope",
+    "交付／完成宣稱只可涵蓋實際獨立重跑的 scope", "task_name 必須直接使用對應固定 role identifier",
 )
 REFERENCE_ROUTES = {
     "references/architecture.md": "啟動本 Skill 時必讀",
@@ -330,7 +330,7 @@ def _validate_states_and_templates(root: Path, errors: list[str]) -> None:
     )
     expected_low_operations = {
         "update_status_message", "retrieval_weights", "test_fixture", "diagnostics",
-        "path_fix", "optional_schema_field", "text_clarification",
+        "path_fix", "optional_schema_field", "text_clarification", "learned_skill_rule",
     }
     if set(doctor.get("LOW_OPERATIONS", set())) != expected_low_operations:
         errors.append("Skill Doctor LOW operation allowlist mismatch")

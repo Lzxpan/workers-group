@@ -22,6 +22,7 @@ _PATTERNS = (
     ("phone", re.compile(r"(?<![A-Za-z0-9])(?:\+?886[- ]?)?0?9\d{2}[- ]?\d{3}[- ]?\d{3}(?![A-Za-z0-9])")),
 )
 _TOKEN = re.compile(r"\b[A-Za-z0-9+/_=-]{32,}\b")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$", re.I)
 _GENERATED_TASK_ID = re.compile(
     r"^WG-(?P<slug>[a-z0-9]+(?:-[a-z0-9]+)*)-[0-9a-f]{12}$",
 )
@@ -55,7 +56,7 @@ def redact_and_validate(text: str) -> dict:
 
     def redact_entropy(match: re.Match[str]) -> str:
         value = match.group(0)
-        if _is_generated_task_id(value):
+        if _is_generated_task_id(value) or _SHA256.fullmatch(value):
             return value
         if not _looks_high_entropy(value):
             return value

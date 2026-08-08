@@ -282,6 +282,7 @@ class MemoryRetriever:
         outcome: str,
         helpful: bool,
         evidence: list[str],
+        qa_verdict: str = "",
     ) -> dict:
         if not isinstance(ledger_id, str) or not ledger_id:
             raise ValueError("ledger_id is required")
@@ -293,6 +294,8 @@ class MemoryRetriever:
             raise ValueError(f"invalid feedback outcome: {outcome}")
         if not isinstance(helpful, bool):
             raise TypeError("helpful must be boolean")
+        if normalized_outcome == "SUCCESS" and str(qa_verdict).upper() != "PASS":
+            raise ValueError("SUCCESS feedback requires an independent QA PASS verdict")
         if (
             not isinstance(evidence, list)
             or not evidence
@@ -305,6 +308,7 @@ class MemoryRetriever:
             "outcome": normalized_outcome,
             "helpful": helpful,
             "evidence": evidence,
+            "qaVerdict": str(qa_verdict).upper(),
         }
         guard = redact_and_validate(
             json.dumps(payload, ensure_ascii=False, sort_keys=True),
@@ -371,6 +375,7 @@ class MemoryRetriever:
                         "outcome": normalized_outcome,
                         "helpful": helpful,
                         "evidence": evidence_paths,
+                        "qaVerdict": str(qa_verdict).upper(),
                     }, ensure_ascii=False),
                     utc_now(),
                 ),
@@ -453,6 +458,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--usage")
     parser.add_argument("--outcome")
     parser.add_argument("--helpful", choices=("true", "false"))
+    parser.add_argument("--qa-verdict", default="")
     parser.add_argument("--evidence", action="append", default=[])
     args = parser.parse_args(argv)
     try:
@@ -470,6 +476,7 @@ def main(argv: list[str] | None = None) -> int:
                 outcome=args.outcome,
                 helpful=args.helpful == "true",
                 evidence=args.evidence,
+                qa_verdict=args.qa_verdict,
             )
         else:
             if args.query is None:
