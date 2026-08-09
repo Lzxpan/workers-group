@@ -4,7 +4,7 @@
 
 `orchestrating-workers-group` 是給 Codex 使用的協作 Skill。它把需要多角色合作的任務，整理成一條可追溯的交付路徑：先對齊目標，再分工實作、保存證據，最後交由獨立 QA（品質驗證）判定實際完成範圍。
 
-> 目前產品版本：V0.4.0
+> 目前產品版本：V0.4.1
 
 ![流程概覽：從對齊目標、安排分工、最小實作、獨立驗證到誠實交付；只交付已驗證範圍。](assets/readme-overview.svg)
 
@@ -166,6 +166,14 @@ flowchart LR
 **文字版流程：** 先對齊授權，再規劃與分工；如果需要新的真人決定，就停在等待人核。Executor 保存實作 evidence 後，QA 獨立重跑。QA 要求修正時回到實作；無法實測的範圍標為 `NOT VERIFIED`，不會被包裝成已完成。只有獨立 QA 實際驗證支持的範圍，才由 Boss 對外說明。
 
 ## 版本歷程
+
+### V0.4.1 — 2026-08-09
+
+相較於上一版 `V0.4.0`，本版把 delegated worker 的長時間進度觀測補成可追溯的 heartbeat 閉環：
+
+- 新增 repository-relative external heartbeat artifact，要求記錄 checkpoint deadline、owner、phase、last command、next step 與 exact resume point。
+- 明確規定 bounded wait timeout 只代表觀察窗口到期；後續以非中斷 checkpoint 續問，依序探測 `status`、`artifact`、`process/log` 與 `exit code`，不會因 timeout 強制中斷長任務。
+- 缺少可讀 evidence 時只能標記 `PARTIAL`、`BLOCKED` 或 `NOT_VERIFIED`，不得補寫 `PASS` 或視為完成；保留獨立 QA 與 fresh clone 的既有驗收邊界。
 
 ### V0.4.0 — 2026-08-09
 
