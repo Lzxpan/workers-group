@@ -169,7 +169,11 @@ flowchart LR
 
 ### V0.4.0 — 2026-08-09
 
-- 將公開 README 的目前產品版本更新為 V0.4.0。
+相較於上一版 `v0.3.1`，本版把可重用經驗納入受限制、可回復且可驗證的自動學習閉環：
+
+- 新增受限自動學習規則區與 `Skill Doctor` 的 `learned_skill_rule` 流程；只有具備 failing baseline、backup、獨立 QA `PASS`、Boss review 且不擴大權限的規則，才能自動追加到 `SKILL.md`。
+- 新增 verified-success memory activation：只有 `CLOSED` 任務、獨立 QA `PASS`、來源角色不是 `workers_qa`，且 evidence 在 repository 內完整綁定時，經驗才可自動升為 `ACTIVE`；其他經驗維持 `CANDIDATE`。
+- 強化 memory 與 Hook 的 evidence binding、redaction、self-review 防護、repair/retrieval/feedback 邊界，並新增 `tests/test_autolearning_global.py` 與相關 regression coverage。
 
 ### v0.3.1 — 2026-08-02
 
