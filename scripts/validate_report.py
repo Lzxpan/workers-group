@@ -68,8 +68,11 @@ def validate_basic_verification(
                 errors.append(f"basic verification focused_checks[{index}].name is required")
             if check.get("verdict") != "PASS":
                 errors.append(f"basic verification focused_checks[{index}].verdict must be PASS")
-    if not isinstance(verification.get("limitations"), list):
-        errors.append("basic verification limitations must be an array")
+    limitations = verification.get("limitations")
+    if not isinstance(limitations, list) or not limitations or any(
+        not isinstance(item, str) or not item.strip() for item in limitations
+    ):
+        errors.append("basic verification limitations must be a non-empty string array")
     errors.extend(_evidence_errors(verification.get("evidence"), "$.evidence", root))
     return {"valid": not errors, "errors": errors}
 

@@ -149,6 +149,8 @@ class VerificationModeTests(unittest.TestCase):
             invalid = dict(valid)
             invalid.pop("limitations")
             self.assertFalse(validate_basic_verification(invalid, repository_root=root)["valid"])
+            empty_limitations = dict(valid, limitations=[])
+            self.assertFalse(validate_basic_verification(empty_limitations, repository_root=root)["valid"])
 
     def test_user_prompt_submit_dispatches_four_or_five_roles(self):
         with tempfile.TemporaryDirectory(prefix="workers-group-dispatch-") as directory:
