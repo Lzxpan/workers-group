@@ -178,14 +178,14 @@ flowchart LR
 
 basic mode 不會自動使用 compute use，也不會把 simulated、build 或靜態檢查當成 runtime、browser、hardware、provider 或 production 證明。需要這些範圍時請在需求中明確寫出「完整 QA」或指定實測環境。
 
+## 版本歷程
+
 ### V0.5.0 — 2026-08-10
 
 - 預設治理流程改為 Boss-owned `basic` verification，未明確要求時不啟動 `workers_qa`。
 - 保留 `strict` verification 與獨立 QA report，支援完整驗收、外部環境實測與 Skill/Hook 發布 QA。
 - `Task Charter`、Hook、transition validator 與 evidence 文件新增 `verification_mode` 與 `boss_verification` 契約。
 - 保留 security、trust boundary、data loss prevention、accessibility 與 `NOT VERIFIED` 邊界；未執行的環境不會被宣稱為已驗證。
-
-## 版本歷程
 
 ### V0.4.1 — 2026-08-09
 
