@@ -24,5 +24,8 @@
   {"id":"WG-STRESS-023","threat":"SUPERSEDED 記憶被優先檢索","gate":"memory-status-filter","evidenceTest":"test_memory_retrieval.py::test_fts_fallback_and_superseded_or_stale_exclusion"},
   {"id":"WG-STRESS-024","threat":"QUARANTINED 記憶被注入為事實","gate":"memory-quarantine","evidenceTest":"test_memory_conflicts.py::test_conflicting_candidate_is_quarantined_and_not_retrieved"},
   {"id":"WG-STRESS-025","threat":"記憶檢索超出 context budget","gate":"retrieval-budget","evidenceTest":"test_memory_retrieval.py::test_ranking_budget_and_retrieval_ledger"},
-  {"id":"WG-STRESS-026","threat":"重複套用相同無效 patch","gate":"patch-fingerprint","evidenceTest":"test_skill_doctor.py::test_backup_rollback_and_repeated_patch_fingerprint_refusal"}
+  {"id":"WG-STRESS-026","threat":"重複套用相同無效 patch","gate":"patch-fingerprint","evidenceTest":"test_skill_doctor.py::test_backup_rollback_and_repeated_patch_fingerprint_refusal"},
+  {"id":"WG-STRESS-027","threat":"一般 basic 任務因缺少 QA report 被錯誤阻擋","gate":"basic-boss-verification","evidenceTest":"test_verification_modes.py::test_basic_stop_does_not_require_qa_report_but_strict_stop_does"},
+  {"id":"WG-STRESS-028","threat":"strict 任務缺少 QA report 卻錯誤放行","gate":"strict-qa-gate","evidenceTest":"test_verification_modes.py::test_basic_stop_does_not_require_qa_report_but_strict_stop_does"},
+  {"id":"WG-STRESS-029","threat":"transition validator 混淆 basic 與 strict gate","gate":"mode-aware-transition","evidenceTest":"test_verification_modes.py::test_transition_validator_accepts_basic_boss_review_and_rejects_strict_without_qa"}
 ]

@@ -1,6 +1,6 @@
 # Accountability policy
 
-報告必須區分已驗證事實、假設、推論、未驗證與失敗。Executor 不可為自己的工作簽發 QA verdict；Boss 不能以摘要、時程或聲望取代可讀 evidence 與獨立 QA。
+報告必須區分已驗證事實、假設、推論、未驗證與失敗。Executor 不可為自己的工作簽發 QA verdict；basic 由 Boss 對自己的整合工作負責 `boss_verification`，strict 才要求獨立 QA；任何模式都不能以摘要、時程或聲望取代可讀 evidence。
 
 每名固定角色由獨立 reviewer 以 10 個項目各 0 到 10 分評估，總分為 0 到 100。每一分都必須連到可讀 evidence、觀察範圍、限制、反例與 reviewer；缺 evidence 的項目不能給高分。相同人不得評自己的交付、自己的 role performance 或自己的 appeal。
 

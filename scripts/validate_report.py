@@ -42,6 +42,38 @@ def _evidence_errors(
     return errors
 
 
+def validate_basic_verification(
+    verification: object,
+    *,
+    repository_root: str | Path | None = None,
+) -> dict:
+    """Validate the small Boss-owned verification record used by basic mode."""
+    errors: list[str] = []
+    root = Path(repository_root) if repository_root is not None else ROOT
+    if not isinstance(verification, dict):
+        return {"valid": False, "errors": ["basic verification must be an object"]}
+    if verification.get("verdict") != "PASS":
+        errors.append("basic verification verdict must be PASS")
+    if verification.get("changed_scope_review") != "PASS":
+        errors.append("basic verification changed_scope_review must be PASS")
+    checks = verification.get("focused_checks")
+    if not isinstance(checks, list) or not checks:
+        errors.append("basic verification focused_checks must be a non-empty array")
+    else:
+        for index, check in enumerate(checks):
+            if not isinstance(check, dict):
+                errors.append(f"basic verification focused_checks[{index}] must be an object")
+                continue
+            if not isinstance(check.get("name"), str) or not check["name"].strip():
+                errors.append(f"basic verification focused_checks[{index}].name is required")
+            if check.get("verdict") != "PASS":
+                errors.append(f"basic verification focused_checks[{index}].verdict must be PASS")
+    if not isinstance(verification.get("limitations"), list):
+        errors.append("basic verification limitations must be an array")
+    errors.extend(_evidence_errors(verification.get("evidence"), "$.evidence", root))
+    return {"valid": not errors, "errors": errors}
+
+
 def _command_errors(commands: object, path: str) -> list[str]:
     errors = []
     if not isinstance(commands, list):

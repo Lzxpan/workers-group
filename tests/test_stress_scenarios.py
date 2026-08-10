@@ -7,15 +7,22 @@ from test_support import ROOT, WorkersGroupTestCase
 
 
 class StressScenarioTraceabilityTests(WorkersGroupTestCase):
-    def test_all_twenty_six_stress_scenarios_have_executable_evidence_tests(self):
+    def test_all_stress_scenarios_have_executable_evidence_tests(self):
         scenario_path = Path(__file__).parent / "scenarios" / "stress-scenarios.json"
         scenarios = json.loads(scenario_path.read_text(encoding="utf-8"))
-        self.assertEqual([f"WG-STRESS-{index:03d}" for index in range(1, 27)], [item["id"] for item in scenarios])
-        self.assertEqual(26, len({item["gate"] for item in scenarios}))
+        self.assertEqual(
+            [f"WG-STRESS-{index:03d}" for index in range(1, len(scenarios) + 1)],
+            [item["id"] for item in scenarios],
+        )
+        self.assertEqual(len(scenarios), len({item["gate"] for item in scenarios}))
         for scenario in scenarios:
             with self.subTest(scenario=scenario["id"]):
                 filename, method = scenario["evidenceTest"].split("::", 1)
-                test_file = ROOT / ".agents" / "skills" / "orchestrating-workers-group" / "tests" / filename
+                candidates = (
+                    ROOT / "tests" / filename,
+                    ROOT / ".agents" / "skills" / "orchestrating-workers-group" / "tests" / filename,
+                )
+                test_file = next((path for path in candidates if path.is_file()), candidates[0])
                 self.assertTrue(test_file.is_file(), scenario)
                 evidence_test = self._load_evidence_test(test_file, method)
                 result = unittest.TestResult()

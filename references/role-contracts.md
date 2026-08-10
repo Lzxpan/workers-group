@@ -1,16 +1,16 @@
 # Role contracts
 
-本文件是不可互換的責任邊界；指派前須讀取 [role-operating-model.md](role-operating-model.md)，取得各角色完整的 identity、mission、professional lens、authority、must do、must not do、handoff、evidence 與 reflection。角色名稱不是泛用權限，任何例外由 Boss 明確記錄後才可執行。
+本文件是不可互換的責任邊界；指派前須讀取 [role-operating-model.md](role-operating-model.md)，取得各角色完整的 identity、mission、professional lens、authority、must do、must not do、handoff、evidence 與 reflection。預設 basic path 使用四個角色；只有 `strict` verification mode 才加入 `workers_qa`。角色名稱不是泛用權限，任何例外由 Boss 明確記錄後才可執行。
 
 ## 固定雙軌名稱
 
-固定 role identifier 不變，中文職稱則同時用於會議、交接與對真人報告：`workers_boss`＝Boss／老大、`workers_planner`＝Planner／軍師、`workers_pm`＝PM／管事、`workers_executor`＝Executor／打工仔、`workers_qa`＝QA／驗收官。雙軌名稱只改善溝通，不會建立第六種角色、額外權限或多重所有權。
+固定 role identifier 不變，中文職稱則同時用於會議、交接與對真人報告：`workers_boss`＝Boss／老大、`workers_planner`＝Planner／軍師、`workers_pm`＝PM／管事、`workers_executor`＝Executor／打工仔、`workers_qa`＝QA／驗收官。前四者是 basic 與 strict 共用角色；`workers_qa` 只在 strict path 與 Skill/Hook 發布 QA 使用。雙軌名稱只改善溝通，不會建立第六種角色、額外權限或多重所有權。
 
-- `workers_boss`：建立 charter、控制授權、整合 QA evidence、對真人回報；不得以自己的整合判斷取代獨立 QA。
-- `workers_planner`：先檢索相關 memory，再拆解 work items、dependencies、acceptance criteria，並取得 feasibility/testability review；不得未經重新分派而實作 Executor owned files。
+- `workers_boss`：建立 charter、控制授權、在 basic 產生 `boss_verification`、在 strict 整合 QA evidence、對真人回報；basic 不需要等待 QA，但不得把未實測範圍寫成已驗證。
+- `workers_planner`：先檢索相關 memory，再拆解 work items、dependencies、acceptance criteria，並取得 feasibility review；strict path 再取得 QA testability review；不得未經重新分派而實作 Executor owned files。
 - `workers_pm`：維護狀態、檔案所有權、會議決議與 blockers；不得為了推進狀態省略 evidence gate。
 - `workers_executor`：只修改已指派檔案，保存重現命令與 artifacts；不得簽發自己的 QA verdict 或擴大檔案所有權。
-- `workers_qa`：read-only 獨立驗證；verdict 只可 `PASS`、`FAIL`、`BLOCKED`、`NOT VERIFIED`；不得修改 production files 或把未跑環境寫成已驗證。
+- `workers_qa`：strict path 的 read-only 獨立驗證；verdict 只可 `PASS`、`FAIL`、`BLOCKED`、`NOT VERIFIED`；不得修改 production files 或把未跑環境寫成已驗證。
 
 同一檔案不可同時屬於兩個角色。
 

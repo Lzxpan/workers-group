@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import runpy
 import sys
+import ast
 import tomllib
 from pathlib import Path
 
@@ -618,8 +619,59 @@ def _validate_openai_yaml(root: Path, errors: list[str]) -> None:
         errors.append("openai.yaml display name mismatch")
 
 
+def _validate_public_source(root: Path, errors: list[str]) -> None:
+    """Validate a root-level public clone without pretending it is a host install."""
+    skill = root / "SKILL.md"
+    content = skill.read_text(encoding="utf-8")
+    parts = content.split("---", 2)
+    if len(parts) < 3:
+        errors.append("SKILL.md frontmatter is incomplete")
+    else:
+        frontmatter = [line for line in parts[1].strip().splitlines() if line.strip()]
+        expected = ["name: orchestrating-workers-group", f"description: {DESCRIPTION}"]
+        if frontmatter != expected:
+            errors.append("SKILL.md frontmatter must contain the exact name and description")
+    for required in CURRENT_GOVERNANCE_CONDITIONS + (
+        "verification_mode", "basic", "strict", "boss_verification",
+    ):
+        if required not in content:
+            errors.append(f"SKILL.md missing governance condition: {required}")
+    for reference in REFERENCE_ROUTES | DETAILED_GOVERNANCE_REFERENCES:
+        if not (root / reference).is_file():
+            errors.append(f"public reference target is missing: {reference}")
+    for asset in (root / "assets").glob("*.json"):
+        try:
+            json.loads(asset.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            errors.append(f"invalid public asset {asset.name}: {exc}")
+    for script in (root / "scripts").glob("*.py"):
+        try:
+            ast.parse(script.read_text(encoding="utf-8"), filename=str(script))
+        except (OSError, UnicodeError, SyntaxError) as exc:
+            errors.append(f"invalid public script {script.name}: {exc}")
+    readme_path = root / "README.md"
+    if readme_path.is_file() and "V0.5.0" not in readme_path.read_text(encoding="utf-8"):
+        errors.append("README.md version must be V0.5.0")
+    scripts = root / "scripts"
+    sys.path.insert(0, str(scripts))
+    try:
+        hook = runpy.run_path(str(scripts / "workers_group_hook.py"))
+        mode = hook["verification_mode_for_prompt"]
+        if mode("$orchestrating-workers-group 一般修改") != "basic":
+            errors.append("public Hook basic mode classification failed")
+        if mode("$orchestrating-workers-group 請做完整 QA") != "strict":
+            errors.append("public Hook strict mode classification failed")
+    except (OSError, ImportError, KeyError, RuntimeError, ValueError) as exc:
+        errors.append(f"public Hook smoke failed: {exc}")
+    finally:
+        sys.path.remove(str(scripts))
+
+
 def validate(root: Path) -> dict:
     errors: list[str] = []
+    if (root / "SKILL.md").is_file() and (root / "scripts").is_dir() and (root / "references").is_dir():
+        _validate_public_source(root, errors)
+        return {"valid": not errors, "errors": errors}
     checks = (
         _validate_skill_file, _validate_hooks, _validate_agents_and_tiers,
         _validate_states_and_templates, _validate_governance_schemas, _validate_openai_yaml,

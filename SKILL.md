@@ -7,6 +7,8 @@ description: Use when complex work requires coordinated planning, staged executi
 
 root agent 是 Boss，也是唯一預設直接與真人溝通的角色。
 
+本 Skill 使用 `verification_mode`：預設為 `basic`，由 Boss 執行基本人工檢查與 targeted smoke check；只有真人明確要求獨立／完整／嚴格 QA，或驗收條件需要 browser、device、provider、production、hardware、compute use 或 security audit 時，才使用 `strict` 並啟動 `workers_qa`。basic 不會移除 security、trust boundary、data loss prevention、accessibility 或 `NOT VERIFIED` 邊界。
+
 建立子代理時，`task_name` 必須直接使用對應固定 role identifier：`workers_planner`、`workers_pm`、`workers_executor`、`workers_qa`；Boss 維持 root agent，不另建 `workers_boss`。不可使用 `planner`、`pm`、`executor`、`qa` 或任意別名；顯示路徑可有上層 prefix，但末段 task name 必須保留該 identifier。
 
 Boss 首要責任是先釐清真人真正想完成的目標、交付物、授權範圍與成功條件；任一歧義若會實質改變方案、風險、外部影響或交付內容，先以最少直接問題問清楚並等待答覆，不得用合理猜測取代需求。
@@ -39,10 +41,10 @@ QA 在實際 target repository 獨立重跑；自動檢查只證明已跑檢查�
 
 1. Boss 建立 Task Charter；不清楚或高風險的授權邊界先停下。
 2. 在規劃前檢索少量相關 `ACTIVE` memory，Planner 說明採用與拒絕理由。
-3. Planner 定義可驗收計畫並取得 Executor feasibility 與 QA testability review；PM 維護狀態與檔案所有權。
+3. Planner 定義可驗收計畫並取得 Executor feasibility review；PM 維護狀態與檔案所有權。若為 `strict`，再取得 QA testability review。
 4. Executor 實作並保存 command、exit code 與 artifact evidence。
-5. QA 在 read-only 邊界獨立重跑驗證；沒有 `PASS` 與 evidence 不得 `CLOSED`。
-6. Boss 比對 charter、QA report 與缺口，誠實回報 `CLOSED`、`BLOCKED`、`FAILED` 或 `NOT_VERIFIED`。
+5. `basic` 由 Boss 產生 `boss_verification`，至少記錄 changed-scope review、focused checks、evidence 與 limitations；`strict` 才由 QA 在 read-only 邊界獨立重跑驗證。
+6. Boss 依 verification mode 比對 evidence 與缺口；`basic` 不要求 QA report，`strict` 沒有 QA `PASS` 與 evidence 不得 `CLOSED`，並誠實回報 `CLOSED`、`BLOCKED`、`FAILED` 或 `NOT_VERIFIED`。
 7. 結束時自動保存已 redacted、可讀 evidence 綁定的經驗。已由獨立 QA `PASS` 驗證的本機成功作法可自動成為 `ACTIVE` memory；其餘經驗先為 `CANDIDATE`，或記錄沒有可保存內容。衝突、敏感、未驗證或外部經驗不得自動啟用。
 8. Skill 變更只能經 Skill Doctor。受限自動學習規則可在完整 baseline、backup、獨立 QA `PASS` 與 Boss review 後自動套用；security、sandbox、network、deletion、credentials、外部帳號／費用、不可逆資料、模型訓練與權限擴張一律等待真人核准。
 
@@ -52,7 +54,7 @@ Hook canonical identifier：`WG-HOOK-010` = `打工人集團｜執行完成度�
 
 ## Phase-based reference routing
 
-啟動本 Skill 時必讀：`references/architecture.md`、`references/role-contracts.md`、`references/role-operating-model.md`、`references/intelligence-tiers.md`、`references/workflow-state-machine.md`、`references/acceptance-and-evidence.md` 與 `references/accountability-policy.md`。先建立 Task Charter、列出五個固定角色與技能席、確認狀態與驗收，再開始工作。
+啟動本 Skill 時必讀：`references/architecture.md`、`references/role-contracts.md`、`references/role-operating-model.md`、`references/intelligence-tiers.md`、`references/workflow-state-machine.md`、`references/acceptance-and-evidence.md` 與 `references/accountability-policy.md`。先建立 Task Charter、設定 `verification_mode`、列出 basic 的四個角色或 strict 的五個角色與技能席、確認狀態與驗收，再開始工作。
 
 指派角色、選擇 model 或 fallback 前，必讀 `references/role-operating-model.md` 與 `references/intelligence-tiers.md`。固定角色必須依專業人格、權限、能力、交接與 reflection 合約行事；技能席由一名固定角色擔保，只有明確範圍與期限，不能自行開發、放行、部署或取得額外權限。
 
@@ -73,7 +75,7 @@ Hook canonical identifier：`WG-HOOK-010` = `打工人集團｜執行完成度�
 <!-- WG_AUTO_LEARNING_RULES_START -->
 - 建立子代理時，task_name 必須使用 workers_planner、workers_pm、workers_executor 或 workers_qa；不得使用縮寫或別名。
 - root Boss（打工人_老大）維持 root agent；子代理 task_name 只能使用 ASCII workers_planner（打工人_軍師）、workers_pm（打工人_管事）、workers_executor（打工人_打工仔）、workers_qa（打工人_驗收官）。括號內僅供對真人、會議與交接顯示，不得傳入 task_name。
-- 使用本 Skill 必須依序完成 Task Charter、ACTIVE memory 與全域 SKILL.md inventory、kickoff、Planner、Executor feasibility、QA testability、design_review/implementation_handoff、Skill Doctor propose/simulate、隔離 full tests、apply 前 workers_qa readiness PASS 與 root Boss pre-approval、apply、apply 後 independent QA PASS、final Boss review 與 canonical transition；權限、限制或規則衝突不得靜默跳過，超時必須探測 artifact/process/log/exit code，未成立則記錄 owner、state、evidence、exact resume point 並停止。
+- 使用本 Skill 必須依序完成 Task Charter、ACTIVE memory 與全域 SKILL.md inventory、kickoff、Planner、Executor feasibility、verification testability、design_review/implementation_handoff、Skill Doctor propose/simulate、隔離 focused tests 與 final Boss review；`strict` 任務另須完成 workers_qa readiness、獨立 QA `PASS` 與 canonical transition，Skill/Hook 發布仍須另外完成一次 read-only release QA。權限、限制或規則衝突不得靜默跳過，超時必須探測 artifact/process/log/exit code，未成立則記錄 owner、state、evidence、exact resume point 並停止。
 - independent QA 必須先驗證 target repository、isolated CodexHome、interpreter/version/import preflight 與 command/cwd；wait timeout 後不得 interrupt 工作，應以非中斷 checkpoint 並依 status、artifact、process/log、exit code 觀測至單一終態；任何缺件、runtime parity 失敗或無 evidence 一律 BLOCKED/NOT VERIFIED，記錄 owner、state、evidence、exact resume point，只有 fresh PASS 才可 CLOSED。
 - 確認可重複的流程失敗或使用者修正時，Boss 主動建立已遮蔽的 Skill Doctor proposal；task_name 必須直接使用對應固定 role identifier；memory `CANDIDATE` 必須保留 evidence 綁定，未獲獨立 QA PASS 不得升級。
 - 每個需要跨 bounded wait 的 delegated work item，啟動時必須指定 repository-relative external heartbeat artifact path、checkpoint deadline、owner、phase、last command、next step 與 exact resume point；每個 bounded checkpoint 前更新 heartbeat，wait timeout 後以非中斷 checkpoint 續問並依序探測 status、artifact、process/log、exit code；缺少可讀 evidence 時只能標記 PARTIAL、BLOCKED 或 NOT_VERIFIED，不得補寫 PASS 或視為完成。

@@ -16,7 +16,13 @@ from create_task import create_task
 from memory_retriever import MemoryRetriever
 from memory_store import MemoryStore, atomic_write_text, file_lock
 from state_store import StateStore, _persistence_guard, find_git_root
-from validate_report import _command_errors, _evidence_errors, _test_errors, validate_document
+from validate_report import (
+    _command_errors,
+    _evidence_errors,
+    _test_errors,
+    validate_basic_verification,
+    validate_document,
+)
 from workers_group_paths import CODEX_HOME, STATIC_ROOT
 
 PREFIX = "打工人集團｜"
@@ -47,6 +53,13 @@ GOVERNANCE_TRIGGER = re.compile(
     r"\bcomplex\s+(?:work|task|project|migration|implementation)\b|"
     r"\bmulti[-\s]?stage\b|\bcross[-\s]?module\b|"
     r"\bhigh[-\s]?risk\b|\bmulti[-\s]?agent\b|\bindependent\s+QA\b"
+    r")"
+)
+STRICT_VERIFICATION_TRIGGER = re.compile(
+    r"(?ix)(?:"
+    r"獨立\s*(?:QA|品質驗證)|完整\s*(?:QA|驗收)|嚴格(?:驗證|驗收)|"
+    r"(?:browser|device|provider|production|hardware|compute\s*use)\s*(?:實測|驗證|test|verification)?|"
+    r"security\s+audit|full\s+(?:QA|verification|acceptance)|strict\s+(?:QA|verification)"
     r")"
 )
 POWERSHELL_REMOVE_ITEM = re.compile(r"(?i)\bRemove-Item\b")
@@ -86,7 +99,7 @@ EVIDENCE_COMMAND = re.compile(
     r"validate|git\s+diff|git\s+status)"
 )
 ROLE_CONTRACTS = {
-    "workers_boss": "Own the Task Charter, human authority boundary, and final evidence gate.",
+    "workers_boss": "Own the Task Charter, human authority boundary, and basic or strict final evidence gate.",
     "workers_planner": "Define scope, feasibility-reviewed work items, acceptance criteria, and evidence.",
     "workers_pm": "Track dependencies, legal state transitions, blockers, and file ownership.",
     "workers_executor": "Modify only owned files; record commands, exit codes, failures, and evidence.",
@@ -95,7 +108,8 @@ ROLE_CONTRACTS = {
 SAFE_STATE_FIELDS = {
     "task_id", "title", "objective", "status", "work_items", "acceptance_criteria",
     "blockers", "remaining_work",
-    "missing_evidence", "failed_tests", "qa_verdict", "overall_verdict", "boss_reviewed",
+    "missing_evidence", "failed_tests", "verification_mode", "boss_verification",
+    "qa_verdict", "overall_verdict", "boss_reviewed", "qa_report", "boss_report",
     "next_steps", "memory_ids", "file_claims", "updated_at", "last_session_ended_at",
 }
 GAP_STATUSES = {
@@ -118,6 +132,18 @@ ROLE_COMPLETION_STATUSES = {
     "workers_pm": {"BOSS_REVIEW"},
     "workers_executor": {"EVIDENCE_REVIEW"},
 }
+DEFAULT_ROLES = ["workers_boss", "workers_planner", "workers_pm", "workers_executor"]
+STRICT_ROLES = DEFAULT_ROLES + ["workers_qa"]
+
+
+def verification_mode_for_prompt(prompt: str) -> str:
+    """Choose strict only when the request explicitly requires deeper verification."""
+    return "strict" if STRICT_VERIFICATION_TRIGGER.search(prompt) else "basic"
+
+
+def _verification_mode(state: dict) -> str:
+    """Treat old active tasks as strict so legacy work is never silently weakened."""
+    return state.get("verification_mode") if state.get("verification_mode") in {"basic", "strict"} else "strict"
 
 
 def _command_text(payload: dict) -> str:
@@ -493,6 +519,20 @@ def _report_errors(
     return errors
 
 
+def _basic_verification_errors(
+    verification: dict | None,
+    *,
+    root: Path,
+    label: str = "boss_verification",
+) -> list[str]:
+    if verification is None:
+        return [f"{label}: basic mode requires a Boss verification record"]
+    return [f"{label}: {error}" for error in validate_basic_verification(
+        verification,
+        repository_root=root,
+    ).get("errors", [])]
+
+
 def _criterion_document(root: Path, entry: object, index: int) -> dict:
     if isinstance(entry, dict) and "path" in entry:
         return _load_repo_json(root, entry["path"], f"acceptance_criteria[{index}]")
@@ -602,6 +642,7 @@ def _completion_report_gaps(
     errors: list[str] = []
     if not task_id:
         return ["completion report: active task_id is required"]
+    strict = _verification_mode(state) == "strict"
 
     report = _payload_document(
         payload,
@@ -612,6 +653,8 @@ def _completion_report_gaps(
     )
     if event == "SubagentStop":
         if role == "workers_qa":
+            if not strict:
+                return []
             errors.extend(_report_errors(
                 report,
                 kind="qa-report",
@@ -651,15 +694,17 @@ def _completion_report_gaps(
         path_keys=("bossReportPath", "boss_report_path"),
         label="boss_report",
     )
-    qa_report = _payload_document(
-        payload,
-        root,
-        inline_keys=("qaReport", "qa_report"),
-        path_keys=("qaReportPath", "qa_report_path"),
-        label="qa_report",
-    )
-    if qa_report is None and state.get("qa_report"):
-        qa_report = _load_repo_json(root, state["qa_report"], "qa_report")
+    qa_report = None
+    if strict:
+        qa_report = _payload_document(
+            payload,
+            root,
+            inline_keys=("qaReport", "qa_report"),
+            path_keys=("qaReportPath", "qa_report_path"),
+            label="qa_report",
+        )
+        if qa_report is None and state.get("qa_report"):
+            qa_report = _load_repo_json(root, state["qa_report"], "qa_report")
     if boss_report is None and state.get("boss_report"):
         boss_report = _load_repo_json(root, state["boss_report"], "boss_report")
     errors.extend(_report_errors(
@@ -670,17 +715,29 @@ def _completion_report_gaps(
         role="workers_boss",
         label="boss_report",
     ))
-    errors.extend(_report_errors(
-        qa_report,
-        kind="qa-report",
-        root=root,
-        task_id=task_id,
-        role="workers_qa",
-        label="qa_report",
-    ))
+    if strict:
+        errors.extend(_report_errors(
+            qa_report,
+            kind="qa-report",
+            root=root,
+            task_id=task_id,
+            role="workers_qa",
+            label="qa_report",
+        ))
+    else:
+        basic_verification = _payload_document(
+            payload,
+            root,
+            inline_keys=("bossVerification", "boss_verification", "basicVerification", "basic_verification"),
+            path_keys=("bossVerificationPath", "boss_verification_path"),
+            label="boss_verification",
+        )
+        if basic_verification is None and isinstance(state.get("boss_verification"), dict):
+            basic_verification = state["boss_verification"]
+        errors.extend(_basic_verification_errors(basic_verification, root=root))
     if boss_report is not None and boss_report.get("status") != "CLOSED":
         errors.append("boss_report: final review status must be CLOSED")
-    if qa_report is not None and qa_report.get("overall_verdict") != "PASS":
+    if strict and qa_report is not None and qa_report.get("overall_verdict") != "PASS":
         errors.append("qa_report: final completion requires PASS verdict")
 
     completion = payload.get("completionState", payload.get("completion_state"))
@@ -748,7 +805,11 @@ def _state_has_gaps(state: dict) -> bool:
                 and criterion.get("verdict", criterion.get("status")) not in {"PASS", "WAIVED"}
             ):
                 return True
-    verdict = state.get("qa_verdict", state.get("overall_verdict"))
+    if _verification_mode(state) == "basic":
+        basic = state.get("boss_verification")
+        verdict = basic.get("verdict") if isinstance(basic, dict) else None
+    else:
+        verdict = state.get("qa_verdict", state.get("overall_verdict"))
     if verdict and verdict != "PASS" and not state.get("human_waiver"):
         return True
     return False
@@ -1071,14 +1132,17 @@ def dispatch(payload: dict, hook_id: str | None = None, event: str | None = None
     elif event == "UserPromptSubmit":
         prompt = str(payload.get("prompt") or "")
         started = bool(GOVERNANCE_TRIGGER.search(prompt))
+        verification_mode = verification_mode_for_prompt(prompt)
         response["governanceStarted"] = started
+        response["verificationMode"] = verification_mode
         if started:
-            response["roles"] = ["workers_boss", "workers_planner", "workers_pm", "workers_executor", "workers_qa"]
+            response["roles"] = STRICT_ROLES if verification_mode == "strict" else DEFAULT_ROLES
             if root:
                 try:
                     charter = create_task(
                         " ".join(prompt.split())[:120] or "Workers Group task",
                         prompt,
+                        verification_mode=verification_mode,
                     )
                     StateStore(
                         root / ".workers-group" / "state"
@@ -1128,6 +1192,7 @@ def dispatch(payload: dict, hook_id: str | None = None, event: str | None = None
         context = {
             "role": role,
             "role_contract": ROLE_CONTRACTS.get(role, "Follow the assigned work item and evidence contract."),
+            "verification_mode": _verification_mode(active),
             "active_task": _safe_task(active),
             "memory_retrieval": retrieval,
         }

@@ -806,6 +806,6 @@ class HookContractTests(WorkersGroupTestCase):
             payload = json.loads(result.stdout)
             self.assertTrue(payload.get("governanceStarted"), payload)
             self.assertEqual(
-                {"workers_boss", "workers_planner", "workers_pm", "workers_executor", "workers_qa"},
+                {"workers_boss", "workers_planner", "workers_pm", "workers_executor"},
                 set(payload.get("roles", [])),
             )

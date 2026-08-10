@@ -13,7 +13,9 @@ from runpy import run_path
 from workers_group_paths import USER_HOME
 
 ROOT = USER_HOME
-validate_document = run_path(str(Path(__file__).with_name("validate_report.py")))["validate_document"]
+_report_module = run_path(str(Path(__file__).with_name("validate_report.py")))
+validate_document = _report_module["validate_document"]
+validate_basic_verification = _report_module["validate_basic_verification"]
 redact_and_validate = run_path(str(Path(__file__).with_name("memory_guard.py")))["redact_and_validate"]
 MAIN_SEQUENCE = (
     "INTAKE", "KICKOFF", "PLANNING", "AWAITING_HUMAN_APPROVAL", "EXECUTING",
@@ -27,7 +29,7 @@ LEGAL = {
     "PLANNING": {"AWAITING_HUMAN_APPROVAL", "EXECUTING", "BLOCKED", "FAILED", "NOT_VERIFIED"},
     "AWAITING_HUMAN_APPROVAL": {"EXECUTING", "BLOCKED", "FAILED", "NOT_VERIFIED"},
     "EXECUTING": {"EVIDENCE_REVIEW", "BLOCKED", "FAILED", "NOT_VERIFIED"},
-    "EVIDENCE_REVIEW": {"QA", "EXECUTING", "BLOCKED", "FAILED", "NOT_VERIFIED"},
+    "EVIDENCE_REVIEW": {"QA", "BOSS_REVIEW", "EXECUTING", "BLOCKED", "FAILED", "NOT_VERIFIED"},
     "QA": {"BOSS_REVIEW", "EXECUTING", "BLOCKED", "FAILED", "NOT_VERIFIED"},
     "BOSS_REVIEW": {"CLOSED", "EXECUTING", "BLOCKED", "FAILED", "NOT_VERIFIED"},
     "BLOCKED": {"PLANNING", "AWAITING_HUMAN_APPROVAL", "EXECUTING", "EVIDENCE_REVIEW", "QA", "FAILED", "NOT_VERIFIED"},
@@ -186,6 +188,65 @@ def _require_evidence_review(state: dict) -> None:
         raise PermissionError(f"EVIDENCE_REVIEW gate missing: {', '.join(missing)}")
 
 
+def _verification_mode(state: dict) -> str:
+    mode = state.get("verification_mode")
+    return mode if mode in {"basic", "strict"} else "strict"
+
+
+def _require_basic_verification(state: dict, completion_evidence: object) -> None:
+    verification = state.get("boss_verification")
+    result = validate_basic_verification(verification, repository_root=ROOT)
+    if not result.get("valid"):
+        raise PermissionError("basic Boss verification failed: " + "; ".join(result.get("errors", [])))
+    completion_paths = _evidence_paths(completion_evidence, "completion")
+    verification_paths = _evidence_paths(verification.get("evidence"), "boss_verification")
+    if not verification_paths & completion_paths:
+        raise PermissionError("boss_verification evidence is not bound to completion evidence")
+
+
+def _require_basic_closed(state: dict, completion_evidence: object) -> None:
+    required_truthy = (
+        "boss_reviewed", "all_acceptance_criteria_passed", "failures_disclosed",
+        "memory_candidate_decision_recorded", "skill_changes_resolved",
+    )
+    missing = [field for field in required_truthy if state.get(field) is not True]
+    if state.get("undisclosed_failures"):
+        missing.append("undisclosed failures")
+    if missing:
+        raise PermissionError(f"DONE gate missing: {', '.join(missing)}")
+    task_id = state.get("task_id")
+    if not isinstance(task_id, str) or not task_id.strip():
+        raise PermissionError("DONE gate requires task_id")
+    completion_paths = _evidence_paths(completion_evidence, "DONE")
+    _require_basic_verification(state, completion_evidence)
+
+    boss_report = _load_document(state.get("boss_report"), "boss_report")
+    _require_valid_schema("role-report", boss_report, "boss_report")
+    if (
+        boss_report.get("task_id") != task_id
+        or boss_report.get("role") != "workers_boss"
+        or boss_report.get("status") != "CLOSED"
+    ):
+        raise PermissionError("boss_report is not bound to the active task and CLOSED Boss review")
+    if boss_report.get("blockers") or boss_report.get("remaining_work"):
+        raise PermissionError("CLOSED boss_report cannot contain blockers or remaining work")
+    if not _evidence_paths(boss_report.get("evidence"), "boss_report") & completion_paths:
+        raise PermissionError("boss_report evidence is not bound to DONE evidence")
+
+    acceptance_entries = state.get("acceptance_criteria")
+    if not isinstance(acceptance_entries, list) or not acceptance_entries:
+        raise PermissionError("DONE gate requires acceptance criterion documents")
+    for index, entry in enumerate(acceptance_entries):
+        if not isinstance(entry, dict) or entry.get("task_id") != task_id:
+            raise PermissionError(f"acceptance_criteria[{index}] is not bound to the active task")
+        document = _load_document(entry.get("path"), f"acceptance_criteria[{index}]")
+        _require_valid_schema("acceptance-criterion", document, f"acceptance_criteria[{index}]")
+        if document.get("status") != "PASS" or document.get("verdict") != "PASS":
+            raise PermissionError(f"acceptance criterion {document.get('id')} is not PASS")
+        if not _evidence_paths(document.get("evidence"), f"acceptance criterion {document.get('id')}") & completion_paths:
+            raise PermissionError(f"acceptance criterion {document.get('id')} evidence is not bound to DONE")
+
+
 def _require_closed(state: dict, qa_verdict: str | None, completion_evidence: object) -> None:
     required_truthy = (
         "boss_reviewed", "all_acceptance_criteria_passed", "failures_disclosed",
@@ -280,12 +341,18 @@ def validate_transition(from_status: str, to_status: str, *, qa_verdict: str | N
         raise PermissionError(f"{to_status} requires existing readable repository evidence")
     if qa_verdict is not None and qa_verdict not in QA_VERDICTS:
         raise ValueError(f"invalid QA verdict: {qa_verdict}")
-    if to_status in {"BOSS_REVIEW", "CLOSED"} and qa_verdict != "PASS":
+    mode = _verification_mode(state or {})
+    if mode == "strict" and to_status in {"BOSS_REVIEW", "CLOSED"} and qa_verdict != "PASS":
         raise PermissionError(f"{to_status} requires QA PASS")
+    if mode == "basic" and to_status == "BOSS_REVIEW":
+        _require_basic_verification(state or {}, evidence)
     if to_status == "EVIDENCE_REVIEW":
         _require_evidence_review(state or {})
     if to_status == "CLOSED":
-        _require_closed(state or {}, qa_verdict, evidence)
+        if mode == "basic":
+            _require_basic_closed(state or {}, evidence)
+        else:
+            _require_closed(state or {}, qa_verdict, evidence)
     return True
 
 

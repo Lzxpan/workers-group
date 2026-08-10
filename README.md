@@ -2,17 +2,17 @@
 
 > 讓複雜任務不只「做完」，而是**可交接、可驗證、有人負責**。
 
-`orchestrating-workers-group` 是給 Codex 使用的協作 Skill。它把需要多角色合作的任務，整理成一條可追溯的交付路徑：先對齊目標，再分工實作、保存證據，最後交由獨立 QA（品質驗證）判定實際完成範圍。
+`orchestrating-workers-group` 是給 Codex 使用的協作 Skill。它把需要多角色合作的任務，整理成一條可追溯的交付路徑：先對齊目標，再分工實作、保存證據，預設由 Boss 做基本驗證；只有明確要求時才交由獨立 QA（品質驗證）做 strict verification。
 
-> 目前產品版本：V0.4.1
+> 目前產品版本：V0.5.0
 
 ![流程概覽：從對齊目標、安排分工、最小實作、獨立驗證到誠實交付；只交付已驗證範圍。](assets/readme-overview.svg)
 
-對齊範圍 → 分工實作 → 保存證據 → 獨立 QA → 只交付已驗證範圍
+對齊範圍 → 分工實作 → 保存證據 → Boss basic verification（或 strict QA）→ 只交付已驗證範圍
 
 **三個承諾：** 範圍清楚 · 證據可回看 · 未驗證不過度宣稱
 
-[快速開始](#快速開始) · [能力地圖](#功能與用途) · [角色分工](#五個固定角色) · [工作流程](#工作流程架構) · [安裝邊界](#安裝方式)
+[快速開始](#快速開始) · [能力地圖](#功能與用途) · [角色分工](#預設四個角色與-strict-qa) · [工作流程](#工作流程架構) · [安裝邊界](#安裝方式)
 
 > [!TIP]
 > 適合跨模組改動、高風險決策、多人協作，或你希望每個「完成」都能附上可重跑證據的任務。
@@ -24,10 +24,10 @@
 | 能力 | 解決什麼問題 | 公開佐證 |
 | --- | --- | --- |
 | 1. 任務授權與目標對齊 | 在動工前把目標、範圍與交付物寫清楚。 | [Task Charter 模板](assets/task-charter.template.json) · [建立工具](scripts/create_task.py) |
-| 2. 五角色與單一責任 | 將整合、規劃、流程、實作、驗收分開，避免一人自說自話。 | [角色合約](references/role-contracts.md) · [角色模型](references/role-operating-model.md) |
+| 2. Basic/strict 角色與單一責任 | 預設由四角色協作並由 Boss 驗證；需要時才加入 strict-only QA。 | [角色合約](references/role-contracts.md) · [角色模型](references/role-operating-model.md) |
 | 3. 狀態、所有權與可回復流程 | 讓工作知道現在在哪一關、誰負責，以及卡住後從哪裡續做。 | [流程狀態機](references/workflow-state-machine.md) · [狀態儲存](scripts/state_store.py) · [轉換驗證](scripts/validate_transition.py) |
 | 4. 會議與交接 | 把關鍵決定、替代方案與下一位負責人留成結構化紀錄。 | [會議劇本](references/meeting-playbook.md) · [會議工具](scripts/meeting_record.py) |
-| 5. Evidence-first 與獨立 QA | 用命令、輸出與產物證據支撐交付，並交由獨立 QA 重跑。 | [evidence 說明](references/acceptance-and-evidence.md) · [QA report 模板](assets/qa-report.template.json) · [報告驗證](scripts/validate_report.py) |
+| 5. Evidence-first 與分級驗證 | 用命令、輸出與產物證據支撐交付；basic 由 Boss 產生 `boss_verification`，strict 才由 QA 重跑。 | [evidence 說明](references/acceptance-and-evidence.md) · [QA report 模板](assets/qa-report.template.json) · [報告驗證](scripts/validate_report.py) |
 | 6. 誠實的未驗證邊界 | 不把 build 成功延伸成未實測的 runtime、browser、hardware 或外部服務成功。 | [Skill 邊界](SKILL.md) · [evidence 邊界](references/acceptance-and-evidence.md) |
 | 7. 隱私導向的長期記憶（memory） | 以 redaction（遮蔽）和審查保護可重用經驗，支援儲存、檢索、整理與修復。 | [memory 架構](references/memory-architecture.md) · [遮蔽工具](scripts/memory_guard.py) · [儲存工具](scripts/memory_store.py) · [檢索工具](scripts/memory_retriever.py) · [整理工具](scripts/memory_consolidator.py) · [修復工具](scripts/memory_repair.py) |
 | 8. 受控的 Skill Doctor 與 rollback | 以結構化提案處理可驗證改善；高風險變更停在真人核准。 | [改善政策](references/self-improvement-policy.md) · [提案模板](assets/improvement-proposal.template.json) · [Skill Doctor](scripts/skill_doctor.py) |
@@ -123,15 +123,15 @@ $orchestrating-workers-group
 | 多人或多代理需要分工 | 啟用，讓 PM 維護檔案所有權與交接。 |
 | 只改一行字、一般問答、低風險小修 | 通常不必啟用。 |
 
-### 五個固定角色
+### 預設四個角色與 strict QA
 
 | 角色 | 專注的責任 | 不能取代 |
 | --- | --- | --- |
-| Boss／老大 | 對齊授權、整合證據、向真人誠實回報。 | 獨立 QA verdict。 |
+| Boss／老大 | 對齊授權、整合證據、basic mode 產生 `boss_verification`，向真人誠實回報。 | strict mode 的獨立 QA verdict。 |
 | Planner／軍師 | 拆解工作、風險、依賴與可驗證計畫。 | Executor 的實作所有權。 |
-| PM／管事 | 維護狀態、檔案所有權、交接與 blocker。 | QA gate 或其他角色的決定。 |
-| Executor／打工仔 | 在已分配範圍內最小實作，保存可重跑 evidence。 | 自己工作的 QA verdict。 |
-| QA／驗收官 | 用唯讀、獨立方式驗證範圍並給出 verdict。 | production 實作或未跑環境的證明。 |
+| PM／管事 | 維護狀態、檔案所有權、交接與 blocker。 | basic/strict verification verdict。 |
+| Executor／打工仔 | 在已分配範圍內最小實作，保存可重跑 evidence。 | 自己工作的 verification verdict。 |
+| QA／驗收官（strict-only） | 只有 strict mode 才用唯讀、獨立方式驗證範圍並給出 verdict。 | production 實作或未跑環境的證明。 |
 
 ## 文件結構
 
@@ -157,13 +157,33 @@ flowchart LR
     D -->|是| E[等待人核]
     E --> C
     D -->|否| F[實作與 evidence]
-    F --> G[獨立 QA]
-    G -->|PASS| H[Boss 交付已驗證範圍]
-    G -->|需要修正| F
-    G -->|NOT VERIFIED| I[保留未驗證邊界]
+    F --> G{verification mode}
+    G -->|basic| H[Boss basic verification]
+    G -->|strict| I[獨立 QA]
+    H -->|PASS| J[Boss 交付已驗證範圍]
+    I -->|PASS| J
+    I -->|需要修正| F
+    H -->|NOT VERIFIED| K[保留未驗證邊界]
+    I -->|NOT VERIFIED| K
 ```
 
-**文字版流程：** 先對齊授權，再規劃與分工；如果需要新的真人決定，就停在等待人核。Executor 保存實作 evidence 後，QA 獨立重跑。QA 要求修正時回到實作；無法實測的範圍標為 `NOT VERIFIED`，不會被包裝成已完成。只有獨立 QA 實際驗證支持的範圍，才由 Boss 對外說明。
+**文字版流程：** 先對齊授權，再規劃與分工；如果需要新的真人決定，就停在等待人核。Executor 保存實作 evidence 後，預設由 Boss 做 basic verification；只有 strict mode 才由 QA 獨立重跑。任一 verification 要求修正時回到實作；無法實測的範圍標為 `NOT VERIFIED`，不會被包裝成已完成。Boss 只能對外說明實際 verification 支持的範圍。
+
+### Verification mode
+
+| 模式 | 預設角色 | 完成條件 | 適用情境 |
+| --- | --- | --- | --- |
+| `basic` | Boss、Planner、PM、Executor | Boss `boss_verification`、focused checks、可讀 evidence、limitations 與必要安全檢查 | 一般複雜任務與本機可逆修改 |
+| `strict` | basic 四角色加 `workers_qa` | QA report `PASS`、可讀 evidence 與 Boss review | 明確要求完整／獨立／嚴格 QA，或需要 browser、device、provider、production、hardware、compute use、security audit 實測 |
+
+basic mode 不會自動使用 compute use，也不會把 simulated、build 或靜態檢查當成 runtime、browser、hardware、provider 或 production 證明。需要這些範圍時請在需求中明確寫出「完整 QA」或指定實測環境。
+
+### V0.5.0 — 2026-08-10
+
+- 預設治理流程改為 Boss-owned `basic` verification，未明確要求時不啟動 `workers_qa`。
+- 保留 `strict` verification 與獨立 QA report，支援完整驗收、外部環境實測與 Skill/Hook 發布 QA。
+- `Task Charter`、Hook、transition validator 與 evidence 文件新增 `verification_mode` 與 `boss_verification` 契約。
+- 保留 security、trust boundary、data loss prevention、accessibility 與 `NOT VERIFIED` 邊界；未執行的環境不會被宣稱為已驗證。
 
 ## 版本歷程
 

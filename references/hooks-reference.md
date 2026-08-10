@@ -16,10 +16,10 @@
 
 Tool matcher 使用 Codex canonical names：`Bash|apply_patch|Edit|Write|Agent`。`PreToolUse` 高風險拒絕使用 nested `hookSpecificOutput.permissionDecision: deny`；`PermissionRequest` 使用 nested `hookSpecificOutput.decision.behavior: deny`，不自動批准。Top-level `decision: block` 只用於 `Stop`／`SubagentStop` continuation。
 
-`SubagentStop` 與 `Stop` 會同時檢查 payload 與 `.workers-group/runtime/active-task.json`。有缺口且低於上限時輸出 `decision: block`；最多 continuation 2 次，達上限後要求 Boss 依 evidence 使用 `BLOCKED`、`FAILED` 或 `NOT VERIFIED`，並保留 resume target。
+`UserPromptSubmit` 會把治理任務標記為 `verification_mode=basic` 或 `strict`。basic 只啟動四個角色，`Stop` 以 Boss `boss_verification` 檢查完成度；strict 才加入 `workers_qa` 並要求 QA report `PASS`。`SubagentStop` 與 `Stop` 會同時檢查 payload 與 `.workers-group/runtime/active-task.json`。有缺口且低於上限時輸出 `decision: block`；最多 continuation 2 次，達上限後要求 Boss 依 evidence 使用 `BLOCKED`、`FAILED` 或 `NOT VERIFIED`，並保留 resume target。
 
 `SubagentStart` 注入精簡 role/task contract；`PostToolUse` 只保存有證據價值且已 redacted 的摘要；`PreCompact`／`PostCompact` 保存與恢復白名單狀態；`SessionEnd` 只寫 session metadata 與 pending memory candidate，不保存 raw transcript。
 
 Repository Hooks 仍須在新 Codex session 由真人使用 `/hooks` review/trust；direct invocation 不能替代 UI runtime 驗證。
 
-Hooks 只可協助保存狀態與提示治理 gate；它們可在 `CLOSED` task、QA report `PASS`、來源角色不同於 QA、可讀 repository evidence 與 memory guard 都通過時，將 verified local experience 排入自動啟用流程。Hooks 不會依 scorecard 自動授權、激活其他 memory、建立內部 `TRAINING_CANDIDATE`、建立 human-only `TRAINING_PROPOSAL`、提交 Hugging Face training、上傳資料或建立 Hub。這些都是 record／人核流程，並非 Hook runtime 證明。
+Hooks 只可協助保存狀態與提示治理 gate；basic 的 `CLOSED` 必須有 Boss verification，strict 的 `CLOSED` 仍必須有 QA report `PASS`，且兩者都要有來源角色、可讀 repository evidence 與 memory guard 的相應證據，才可將 verified local experience 排入自動啟用流程。Hooks 不會依 scorecard 自動授權、激活其他 memory、建立內部 `TRAINING_CANDIDATE`、建立 human-only `TRAINING_PROPOSAL`、提交 Hugging Face training、上傳資料或建立 Hub。這些都是 record／人核流程，並非 Hook runtime 證明。
