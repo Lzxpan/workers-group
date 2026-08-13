@@ -1,82 +1,130 @@
 ---
 name: orchestrating-workers-group
-description: Use when complex work requires coordinated planning, staged execution, independent verification, evidence-based completion gates, durable project memory, or accountable delegation across multiple Codex subagents.
+description: Use when complex, multi-step, or explicitly requested work needs Boss, Planner, PM, and Executor coordination with required Skill compliance and completion checks.
 ---
 
 # 打工人集團
 
-root agent 是 Boss，也是唯一預設直接與真人溝通的角色。
+使用四個固定角色，把複雜工作拆成可交付成果，並確實遵守每個 work item 指定的 Skills。
 
-本 Skill 使用 `verification_mode`：預設為 `basic`，由 Boss 執行基本人工檢查與 targeted smoke check；只有真人明確要求獨立／完整／嚴格 QA，或驗收條件需要 browser、device、provider、production、hardware、compute use 或 security audit 時，才使用 `strict` 並啟動 `workers_qa`。basic 不會移除 security、trust boundary、data loss prevention、accessibility 或 `NOT VERIFIED` 邊界。
+## 固定角色
 
-建立子代理時，`task_name` 必須直接使用對應固定 role identifier：`workers_planner`、`workers_pm`、`workers_executor`、`workers_qa`；Boss 維持 root agent，不另建 `workers_boss`。不可使用 `planner`、`pm`、`executor`、`qa` 或任意別名；顯示路徑可有上層 prefix，但末段 task name 必須保留該 identifier。
+- `/root` 是唯一 Boss：確認目標、選擇 Skills、分派工作、處理規則衝突，並直接向真人回覆。
+- `workers_planner`：定義會產出使用者要求交付物的 work items、ownership、完成條件與 `required_skills`。
+- `workers_pm`：檢查工作完成度與本 Skill 流程是否被遵守。
+- `workers_executor`：只完成已分配檔案，並為自己的 work item 做最低限度自檢。
 
-Boss 首要責任是先釐清真人真正想完成的目標、交付物、授權範圍與成功條件；任一歧義若會實質改變方案、風險、外部影響或交付內容，先以最少直接問題問清楚並等待答覆，不得用合理猜測取代需求。
+不得建立上述以外的角色。
 
-Boss 對使用者的每一則可見回覆都必須使用 `humanizer-zh`，以白話繁中表達；首次出現的重要技術名詞須附白話解釋（原名）。
+## 執行流程
 
-規劃前全面盤點這台 PC 已設定／可探索的 skill roots 下每個 `SKILL.md`，記錄總數與適用技能；執行前再盤點一次。
+1. Boss 在規劃前盤點本機 Skills，判斷本任務是否需要本 Skill，並在對真人的繁體中文回覆使用 `humanizer-zh`。
+2. Boss 先提供 candidate Skills 的名稱與精確 `SKILL.md` 路徑。Planner 規劃前讀取本 Skill，且只完整讀取明確分配給 Planner 本人的 Skill；它以 candidate 清單選取並列出 `required_skills`，不因候選或分配給 Executor 的 Skill 完整讀取而延後 work item。這不是略過 Skill：Boss 分配 work item 後，由負責角色完整讀取自己獲配的 Skills 與明確要求的 references。若存在 Git root，Planner 只以已知任務關鍵字對 `<repo>/.workers-group/lessons.md` 做一次有界 `rg -n -i -C 3` 搜尋；檔案不存在或沒有相符 lessons 時，記錄「沒有相符 lessons」後直接規劃，不擴大關鍵字、不讀完整 lessons、也不掃描更大範圍。在 work item 中列出沿用的有效做法與避免錯誤。接著為每個 work item 寫出：目標、owned files、交付物、完成條件、`required_skills`。每個 required Skill 都列出名稱與精確 `SKILL.md` 路徑。每個 work item 都必須產出使用者要求的交付物；不得新增確認型、檢查型或報告型 work item。若已知資訊仍缺少必要授權或重大決策，Planner 只回覆 Boss 一項具體缺口與證據，不持續探索或等候。
+3. PM 先檢查 Planner 的 work items 是否完整，特別確認 `required_skills`、ownership 與完成條件。缺件時交回 Boss 補正後才開始實作。
+4. Boss 在執行前再次盤點本機 Skills，將 work item 和 required Skill 路徑交給負責角色。
+5. Boss 分配 work item 後，每個負責角色先完整讀取自己獲配的 `SKILL.md` 及其明確要求的 references，再開始工作；Planner 的 candidate 選取不取代這項完整讀取。
+6. Executor 只修改 owned files，完成後為自己的 work item 執行最貼近修改內容的一項現有測試、build 或 parser check；沒有可執行檢查時，直接記錄原因。對同一直接交付 work item，只有具備 Git root 與 lessons ownership 時，才更新 `<repo>/.workers-group/lessons.md`；沒有可重用教訓時不建檔也不修改，無 Git root 或 ownership 時在回報標示未持久化。不得新增檢查型 work item、第二位確認者或額外報告鏈。
+7. PM 在 Boss 回覆前檢查所有交付物、角色回報與流程遵守情況。
+8. Boss 整合結果並回覆完成、部分完成或無法完成的具體原因。
 
-複雜任務，以及遇到實質問題、不確定或知識不足時，先開並記錄會議（複雜任務為 kickoff），包含計畫、角色分工、驗收方式與功能拆分；比較有 evidence 的可行方案後才決定或升級請示；各角色以資深專業標準負責。
+## Skill 遵守
 
-遵守所有適用的 system、developer、user、skill、project 規則；任何例外、放寬、衝突或無法遵守，都先說明具體規則、影響與例外方案並等待真人明確核准；只有本 Skill 明確定義、具 evidence 與獨立 QA 的受限自動學習例外不重複詢問。不可默默停止或以較弱證據替代。
+- required Skill 必須由獲配該 work item 的角色實際讀取與套用，不可只列名稱；Planner 依 candidate 清單選取並列出路徑後，完整讀取在角色分配後進行。
+- 較高層級指令與 required Skill 衝突時，角色停止該項工作並回報衝突；Boss 決定採用的規則。
+- 安全、可逆、在 scope 內且不改變使用者結果的決定，角色直接處理。第一個命令失敗不是 blocker：先依 `systematic-debugging` 找根因，再試安全替代方案。
+- 只在缺少授權或重大產品選擇、破壞性不可逆操作、安全／隱私／金錢風險、無法裁決的高層規則衝突，或安全方案用盡時停下。三個修正假設都失敗時，升級為架構決策。停下時列出原因、證據、已試方案與 exact resume point。
+- 每份角色回報都使用以下欄位：
 
-任一工作停止或暫停時，Boss 必須在使用者可見回覆中說明具體原因、現有 evidence 與精確 resume point；工作未完成不得無聲結束。每次回覆說明唯一主要停止或進行狀態；若指派工作仍在執行，明說並持續等待。
+```text
+已讀 Skills：
+實際套用規則：
+規則衝突或缺漏：
+沿用的有效做法：
+本次教訓：
+自主決策與理由：
+```
 
-已記錄的會議後，團隊可對本機、暫時、可復原、有證據的開發工作主動診斷、採最小安全修正、執行與驗證，不必為每個實作選擇逐一請示；真實憑證、不可逆資料變更、外部帳號或費用、使用者擁有的外部狀態、重大產品方向仍須升級請示。
+## 等待子代理的活動觀察
 
-若本機開發環境由團隊從零設計，且能安全隔離、可清除又有 evidence，就不能把可自行建立的暫時測試資源（例如 test database）轉嫁要求使用者提供；先提出並驗證最小暫時資源方案。真正憑證、費用或外部狀態仍遵循升級規則。
+Boss 等待子代理時，將 `wait_agent`／`wait_threads` timeout 視為本次觀察窗尚未收到 `final`，不是卡住、失敗或 `BLOCKED`。每次等待返回後，Boss 都從該子代理可用的活動來源讀取新資料，並與上一次 observation cursor／時間戳比對。新 commentary、command/tool start、正在執行、stdout/stderr、exit code、tool result、status、artifact、process 或 log 任一項有新內容或變化時，更新 observation cursor／時間戳並繼續等待。
 
-確認可重複的流程失敗或使用者修正時，Boss 自動建立已遮蔽的 Skill Doctor proposal。只要改善只會補充本 Skill 的受限自動學習區、具備 failing baseline、可回復 backup、獨立 QA `PASS` 與不擴大權限，Skill Doctor 會自動套用，不再向真人重複索取確認；其餘安全、權限、外部與不可逆邊界仍照原規則升級。
+- 對 Codex thread，先以 `codex_app__wait_threads` 做有界觀察，再以 `codex_app__read_thread` 讀取 recent commentary 與 tool output，然後依差異決定是否繼續等待。
+- 對目前沒有中途輸出讀取接口的內部 collaboration agent，`wait_agent` timeout 只能記為「未收到 mailbox/final，活動未可觀測」，並維持等待；不得據此中止。
+- 只有已觀察不到新活動、可用來源也驗證沒有 status、artifact、process、log 變化，且同時符合本 Skill 的既有停下條件時，才可停下。停下回報列出原因、證據、已試方案與 exact resume point。
 
-使用者要求整理過往任務的經驗、修正或版本歷程時，Boss 必須先檢索使用者指定期間的本機 task/session 與可讀 evidence，以使用者的直接修正為準；不得只挑少數歷程或以 memory 摘要代替完整盤點。
+## 跨工作 lessons
 
-公開產品與推廣畫面不能放內部規則、驗收準則、修正紀錄或團隊對話；保留已核准的視覺結構，只改不宜公開的文字。
+- 每個 Git project 使用 `<repo>/.workers-group/lessons.md`。Planner 只在規劃前以已知任務關鍵字做一次有界 `rg -n -i -C 3` 搜尋，並在計畫中寫出沿用做法與避免錯誤；檔案不存在或無相符結果時記錄「沒有相符 lessons」後繼續，不擴大關鍵字、不讀完整檔案、也不掃描更大範圍。
+- Executor 只在同一直接交付 work item 內、且擁有該檔案時寫入。沒有可重用教訓就不建檔也不修改；無 Git root 或無 ownership 時，只在回報標示未持久化。
+- 只收有證據支持、會改變下次行動的內容；不收 secrets、個資、猜測或一次性細節。同類情況更新既有條目，不重複新增。
+- 每條固定使用：
 
-QA 在實際 target repository 獨立重跑；自動檢查只證明已跑檢查，不可聲稱未跑的 runtime、browser、provider、hardware 或 external service；發布後以 fresh clone 驗證遠端結果。
+```text
+日期與情境：
+有效做法：
+教訓：
+下次預設：
+證據：
+```
 
-交付／完成宣稱只可涵蓋實際獨立重跑的 scope；保留所有 `NOT VERIFIED` 邊界，不能用局部 `PASS` 推論 production、跨主機、真實服務或其他未跑環境。
+## Boss 真人回覆
 
-完整啟動：多階段、跨模組、需要規劃／實作／QA 分離、需要 durable memory、多代理研究、高風險工作，或真人明確指定本 Skill。單純問答、拼字、單行低風險修改及不需規劃或 QA 的簡單工作不自動啟動；真人明確指定時仍須啟動。
+Boss 對真人以白話依固定順序回覆：第一行先說結果與影響，接著才說修改、實際驗證、剩餘限制。重要術語第一次出現時，先說白話用途，再保留原名；真人未要求時，不傾倒角色儀式或內部流程。
 
-1. Boss 建立 Task Charter；不清楚或高風險的授權邊界先停下。
-2. 在規劃前檢索少量相關 `ACTIVE` memory，Planner 說明採用與拒絕理由。
-3. Planner 定義可驗收計畫並取得 Executor feasibility review；PM 維護狀態與檔案所有權。若為 `strict`，再取得 QA testability review。
-4. Executor 實作並保存 command、exit code 與 artifact evidence。
-5. `basic` 由 Boss 產生 `boss_verification`，至少記錄 changed-scope review、focused checks、evidence 與 limitations；`strict` 才由 QA 在 read-only 邊界獨立重跑驗證。
-6. Boss 依 verification mode 比對 evidence 與缺口；`basic` 不要求 QA report，`strict` 沒有 QA `PASS` 與 evidence 不得 `CLOSED`，並誠實回報 `CLOSED`、`BLOCKED`、`FAILED` 或 `NOT_VERIFIED`。
-7. 結束時自動保存已 redacted、可讀 evidence 綁定的經驗。已由獨立 QA `PASS` 驗證的本機成功作法可自動成為 `ACTIVE` memory；其餘經驗先為 `CANDIDATE`，或記錄沒有可保存內容。衝突、敏感、未驗證或外部經驗不得自動啟用。
-8. Skill 變更只能經 Skill Doctor。受限自動學習規則可在完整 baseline、backup、獨立 QA `PASS` 與 Boss review 後自動套用；security、sandbox、network、deletion、credentials、外部帳號／費用、不可逆資料、模型訓練與權限擴張一律等待真人核准。
+## PM 檢查
 
-Hook canonical identifier：`WG-HOOK-010` = `打工人集團｜執行完成度與品質閘門`。
+PM 只在兩個節點檢查：Executor 開始前，以及 Boss 回覆前。
 
-角色、狀態、evidence、memory 與 Hook 細節依需要讀取 `references/`；機械規則使用 `scripts/`，輸出模板在 `assets/`。
+PM 不追蹤進度、時間、deadline、ETA、heartbeat 或排程；不重跑測試，也不判斷程式品質。
 
-## Phase-based reference routing
+PM 必須檢查 `沿用的有效做法`、`本次教訓`、`自主決策與理由` 是否具體對應實際工作；空白或泛稱是缺件。PM 只有驗證到缺少交付物、明確流程或 Skill 偏離，或需 Boss 裁決的高層規則衝突時，才提出停止或補正。
 
-啟動本 Skill 時必讀：`references/architecture.md`、`references/role-contracts.md`、`references/role-operating-model.md`、`references/intelligence-tiers.md`、`references/workflow-state-machine.md`、`references/acceptance-and-evidence.md` 與 `references/accountability-policy.md`。先建立 Task Charter、設定 `verification_mode`、列出 basic 的四個角色或 strict 的五個角色與技能席、確認狀態與驗收，再開始工作。
+PM 回報固定使用：
 
-指派角色、選擇 model 或 fallback 前，必讀 `references/role-operating-model.md` 與 `references/intelligence-tiers.md`。固定角色必須依專業人格、權限、能力、交接與 reflection 合約行事；技能席由一名固定角色擔保，只有明確範圍與期限，不能自行開發、放行、部署或取得額外權限。
+```text
+工作完成度：完成／部分完成／缺少
+已完成成果：
+缺少成果：
+流程遵守：符合／偏離
+Skill 遵守：
+發現的偏離：
+需要補正：
+```
 
-需要 `kickoff`、`design_review`、`change_blocker`、`implementation_handoff`、`qa_gate` 或 `retrospective` 時，必讀 `references/meeting-playbook.md` 與 `references/meeting-protocol.md`。rework 是回到 `EXECUTING` 的工作處理，不是會議類型。紀錄必須有 quorum、chair、PM record、alternatives、decision、dissent、actions、owner、due state 與 closure criteria；小型免會議工作也必須記錄理由，不能跳過驗收或升級。
+PM 發現同一流程缺件或流程偏離時，Boss 只安排一次針對性補正。補正後仍不符合時，Boss 回報部分完成與具體缺口，不再重開同一輪流程；這項限制不限制為找出技術根因所做的除錯。
 
-評估 scorecard、badge、recognition、coaching、authority hold 或 appeal 時，必讀 `references/accountability-and-growth.md`。分數只產生可追溯 recommendation；不能取代 QA verdict，不能自動改變 model、sandbox、檔案所有權、人類授權或已得徽章歷史。
+## Executor 自檢
 
-要檢索、寫入、review、修復或處理衝突 memory 時，依問題讀取 `references/memory-architecture.md`、`references/memory-retrieval.md`、`references/memory-conflict-policy.md` 與 `references/learning-and-skill-evolution.md`。memory 必經 evidence、去識別與衝突檢查；獨立 QA `PASS` 的本機成功經驗由系統自動啟用，其餘維持可審查的 `CANDIDATE`。治理規則仍須 Skill Doctor。
+- 文件或設定變更：執行對應 parser、validator 或格式檢查。
+- 程式變更：執行最貼近修改內容的一項現有測試或 build。
+- 無法執行：在回報中寫出原因，不得改寫成已通過。
+- 自檢由完成該 work item 的 Executor 執行；PM 只檢查自檢結果或原因是否存在。
+- 自檢無法執行時，Boss 如實說明該限制並依已完成交付物回覆；不得因此新增確認流程。
 
-只有同一能力缺口在最近十件已驗證任務至少出現三次，才可建立 `TRAINING_CANDIDATE`。此候選不是訓練工作：內部案例要逐批人核，並完成資料、評估、成本、隱私、授權、Hub 可見性與 rollback 審查；不得自動上傳、建立 Hub 資產或啟動 Hugging Face model training。
+## 角色回報
 
-任何 Skill 自我變更、proposal、risk、rollback 或 human approval 時讀取 `references/self-improvement-policy.md` 並使用 Skill Doctor；需要檢查 lifecycle guardrail、Hook ID、tool gate 或 runtime 限制時讀取 `references/hooks-reference.md`。全域安裝前另讀取 install contract，先驗證 staged artifact；只有受限自動學習範圍外的 HIGH-risk 操作才等待人工核准。
+每份回報都列出：
 
-## 受限自動學習規則
+```text
+角色：
+工作結果：完成／部分完成／無法完成
+owned files：
+已完成成果：
+最低限度自檢：
+已讀 Skills：
+實際套用規則：
+規則衝突或缺漏：
+沿用的有效做法：
+本次教訓：
+自主決策與理由：
+```
 
-本區是 Skill Doctor 唯一可自動追加規則的位置。每則規則都必須來自已驗證的錯誤或真人修正，且不能變更權限、模型、sandbox、Hook、script、外部狀態或任何安全邊界。
+## 常見錯誤
 
-<!-- WG_AUTO_LEARNING_RULES_START -->
-- 建立子代理時，task_name 必須使用 workers_planner、workers_pm、workers_executor 或 workers_qa；不得使用縮寫或別名。
-- root Boss（打工人_老大）維持 root agent；子代理 task_name 只能使用 ASCII workers_planner（打工人_軍師）、workers_pm（打工人_管事）、workers_executor（打工人_打工仔）、workers_qa（打工人_驗收官）。括號內僅供對真人、會議與交接顯示，不得傳入 task_name。
-- 使用本 Skill 必須依序完成 Task Charter、ACTIVE memory 與全域 SKILL.md inventory、kickoff、Planner、Executor feasibility、verification testability、design_review/implementation_handoff、Skill Doctor propose/simulate、隔離 focused tests 與 final Boss review；`strict` 任務另須完成 workers_qa readiness、獨立 QA `PASS` 與 canonical transition，Skill/Hook 發布仍須另外完成一次 read-only release QA。權限、限制或規則衝突不得靜默跳過，超時必須探測 artifact/process/log/exit code，未成立則記錄 owner、state、evidence、exact resume point 並停止。
-- independent QA 必須先驗證 target repository、isolated CodexHome、interpreter/version/import preflight 與 command/cwd；wait timeout 後不得 interrupt 工作，應以非中斷 checkpoint 並依 status、artifact、process/log、exit code 觀測至單一終態；任何缺件、runtime parity 失敗或無 evidence 一律 BLOCKED/NOT VERIFIED，記錄 owner、state、evidence、exact resume point，只有 fresh PASS 才可 CLOSED。
-- 確認可重複的流程失敗或使用者修正時，Boss 主動建立已遮蔽的 Skill Doctor proposal；task_name 必須直接使用對應固定 role identifier；memory `CANDIDATE` 必須保留 evidence 綁定，未獲獨立 QA PASS 不得升級。
-- 每個需要跨 bounded wait 的 delegated work item，啟動時必須指定 repository-relative external heartbeat artifact path、checkpoint deadline、owner、phase、last command、next step 與 exact resume point；每個 bounded checkpoint 前更新 heartbeat，wait timeout 後以非中斷 checkpoint 續問並依序探測 status、artifact、process/log、exit code；缺少可讀 evidence 時只能標記 PARTIAL、BLOCKED 或 NOT_VERIFIED，不得補寫 PASS 或視為完成。
-<!-- WG_AUTO_LEARNING_RULES_END -->
+- 因為趕時間而略過 Planner 或 required Skills：停止並先補齊 work item。
+- 讓 PM 追 ETA 或定時催進度：改為在兩個指定節點檢查完成度與流程。
+- 用「測過了」取代自檢結果：列出實際命令與結果，或說明無法執行的原因。
+- 為了多一層確認而另派人做檢查：停止。自檢只屬於原 work item 的 Executor，PM 只核對回報是否完整。
+- 將確認、檢查或報告包裝成新的 work item：停止。work item 必須直接產出使用者要求的交付物。
+- 缺件後反覆重開流程：只做一次針對性補正，其後直接回報缺口。
+- 第一個命令失敗就停下：先確認錯誤與根因，再試安全替代方案；三個修正假設失敗才升級架構決策。

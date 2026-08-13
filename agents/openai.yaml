@@ -1,4 +1,4 @@
 interface:
   display_name: "打工人集團"
-  short_description: "以多代理規劃、Boss basic verification、strict QA 與證據閘門管理複雜工作"
-  default_prompt: "Use $orchestrating-workers-group to coordinate this complex repository task with Boss basic verification; request strict independent QA when needed."
+  short_description: "以白話交付、跨工作 lessons 與安全自主續行完成複雜工作"
+  default_prompt: "Use $orchestrating-workers-group to complete this task with plain-language results, reusable lessons, and safe in-scope continuation."
